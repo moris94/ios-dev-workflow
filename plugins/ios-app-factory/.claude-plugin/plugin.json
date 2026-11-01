@@ -1,7 +1,7 @@
 {
   "name": "ios-app-factory",
   "displayName": "iOS App Factory",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Idea-to-App-Store pipeline: market research, proposal, charter, MVP, design, SwiftUI/SwiftData/StoreKit 2 implementation, en/ja localization, tests, store screenshots, ASO and App Store Connect sync. Gated, resumable, and human-approved before review submission or release.",
   "author": {
     "name": "moris94"
