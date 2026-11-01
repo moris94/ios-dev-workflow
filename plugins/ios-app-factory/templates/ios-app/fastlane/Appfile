@@ -1,0 +1,2 @@
+app_identifier("__BUNDLE_ID__")
+team_id("__TEAM_ID__") unless "__TEAM_ID__".empty?

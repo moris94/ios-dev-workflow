@@ -1,0 +1,263 @@
+{
+  "idea": "A calm, minimal notes app for capturing ideas in two taps",
+  "generated_at": "2026-10-30T10:00:00Z",
+  "sources": [
+    {
+      "id": "S1",
+      "url": "https://apps.apple.com/app/id1000000001",
+      "title": "Competitor A – App Store listing",
+      "retrieved_at": "2026-10-30",
+      "type": "app_store"
+    },
+    {
+      "id": "S2",
+      "url": "https://apps.apple.com/app/id1000000002",
+      "title": "Competitor B – App Store listing",
+      "retrieved_at": "2026-10-30",
+      "type": "app_store"
+    },
+    {
+      "id": "S3",
+      "url": "https://apps.apple.com/app/id1000000003",
+      "title": "Competitor C – App Store listing",
+      "retrieved_at": "2026-10-30",
+      "type": "app_store"
+    },
+    {
+      "id": "S4",
+      "url": "https://apps.apple.com/app/id1000000004",
+      "title": "Competitor D – App Store listing",
+      "retrieved_at": "2026-10-30",
+      "type": "app_store"
+    },
+    {
+      "id": "S5",
+      "url": "https://apps.apple.com/app/id1000000005",
+      "title": "Competitor E – App Store listing",
+      "retrieved_at": "2026-10-30",
+      "type": "app_store"
+    },
+    {
+      "id": "S6",
+      "url": "https://fixtures.example.org/research/source-6",
+      "title": "Review digest: note apps feel cluttered",
+      "retrieved_at": "2026-10-30",
+      "type": "review"
+    },
+    {
+      "id": "S7",
+      "url": "https://fixtures.example.org/research/source-7",
+      "title": "Forum thread: looking for a calm notes app",
+      "retrieved_at": "2026-10-30",
+      "type": "forum"
+    },
+    {
+      "id": "S8",
+      "url": "https://fixtures.example.org/research/source-8",
+      "title": "Article: minimal productivity tools trend",
+      "retrieved_at": "2026-10-30",
+      "type": "article"
+    },
+    {
+      "id": "S9",
+      "url": "https://fixtures.example.org/research/source-9",
+      "title": "Survey: note-taking habits",
+      "retrieved_at": "2026-10-30",
+      "type": "statistics"
+    },
+    {
+      "id": "S10",
+      "url": "https://fixtures.example.org/research/source-10",
+      "title": "Forum (JP): シンプルなメモアプリを探しています",
+      "retrieved_at": "2026-10-30",
+      "type": "forum"
+    }
+  ],
+  "competitors": [
+    {
+      "name": "Fixture Notes Pro",
+      "app_store_url": "https://apps.apple.com/app/id1000000001",
+      "price_model": "subscription",
+      "price_notes": "fixture",
+      "rating": null,
+      "rating_count": null,
+      "strengths": [
+        "fast sync"
+      ],
+      "weaknesses": [
+        "cluttered UI with many options",
+        "subscription required for basic features"
+      ],
+      "source_ids": [
+        "S1",
+        "S6"
+      ]
+    },
+    {
+      "name": "Fixture Jotter",
+      "app_store_url": "https://apps.apple.com/app/id1000000002",
+      "price_model": "freemium_iap",
+      "price_notes": "fixture",
+      "rating": null,
+      "rating_count": null,
+      "strengths": [
+        "fast sync"
+      ],
+      "weaknesses": [
+        "cluttered UI with many options",
+        "ads interrupt capture"
+      ],
+      "source_ids": [
+        "S2",
+        "S6"
+      ]
+    },
+    {
+      "name": "Fixture Mindbox",
+      "app_store_url": "https://apps.apple.com/app/id1000000003",
+      "price_model": "ads",
+      "price_notes": "fixture",
+      "rating": null,
+      "rating_count": null,
+      "strengths": [
+        "fast sync"
+      ],
+      "weaknesses": [
+        "cluttered UI with many options",
+        "subscription required for basic features"
+      ],
+      "source_ids": [
+        "S3",
+        "S6"
+      ]
+    },
+    {
+      "name": "Fixture Quicknote",
+      "app_store_url": "https://apps.apple.com/app/id1000000004",
+      "price_model": "paid",
+      "price_notes": "fixture",
+      "rating": null,
+      "rating_count": null,
+      "strengths": [
+        "fast sync"
+      ],
+      "weaknesses": [
+        "cluttered UI with many options",
+        "ads interrupt capture"
+      ],
+      "source_ids": [
+        "S4",
+        "S6"
+      ]
+    },
+    {
+      "name": "Fixture Paperlite",
+      "app_store_url": "https://apps.apple.com/app/id1000000005",
+      "price_model": "subscription",
+      "price_notes": "fixture",
+      "rating": null,
+      "rating_count": null,
+      "strengths": [
+        "fast sync"
+      ],
+      "weaknesses": [
+        "cluttered UI with many options",
+        "subscription required for basic features"
+      ],
+      "source_ids": [
+        "S5",
+        "S6"
+      ]
+    }
+  ],
+  "demand_signals": [
+    {
+      "signal": "Users ask for calm note apps without subscriptions",
+      "evidence": "fixture forum thread",
+      "strength": "moderate",
+      "source_ids": [
+        "S7"
+      ]
+    },
+    {
+      "signal": "Reviews complain about clutter",
+      "evidence": "fixture review digest",
+      "strength": "strong",
+      "source_ids": [
+        "S6"
+      ]
+    },
+    {
+      "signal": "Japanese users ask for simple memo apps",
+      "evidence": "fixture JP forum",
+      "strength": "moderate",
+      "source_ids": [
+        "S10"
+      ]
+    },
+    {
+      "signal": "Interest in minimal tools is growing",
+      "evidence": "fixture article",
+      "strength": "weak",
+      "source_ids": [
+        "S8"
+      ]
+    }
+  ],
+  "user_pain_points": [
+    {
+      "pain": "Too many steps before you can write",
+      "source_ids": [
+        "S6"
+      ]
+    },
+    {
+      "pain": "Subscriptions for basic notes",
+      "source_ids": [
+        "S7"
+      ]
+    }
+  ],
+  "market_gaps": [
+    {
+      "gap": "One-time-purchase, two-tap capture notes app with first-class Japanese",
+      "source_ids": [
+        "S7",
+        "S10"
+      ]
+    }
+  ],
+  "risks": [
+    {
+      "risk": "Crowded category",
+      "mitigation": "Differentiate on calm UX and one-time pricing"
+    }
+  ],
+  "search_log": [
+    {
+      "query": "minimal notes app iphone",
+      "tool": "WebSearch"
+    },
+    {
+      "query": "site:apps.apple.com notes",
+      "tool": "WebSearch"
+    },
+    {
+      "query": "notes app no subscription reddit",
+      "tool": "WebSearch"
+    },
+    {
+      "query": "シンプル メモアプリ iPhone 買い切り",
+      "tool": "WebSearch"
+    },
+    {
+      "query": "note taking survey 2026",
+      "tool": "WebSearch"
+    }
+  ],
+  "verdict": {
+    "go": true,
+    "confidence": "medium",
+    "rationale": "Moderate demand and a clear gap for a calm, one-time-purchase notes app (fixture)."
+  }
+}

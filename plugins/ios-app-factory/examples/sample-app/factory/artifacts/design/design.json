@@ -1,0 +1,99 @@
+{
+  "concept": {
+    "name": "Forest Paper",
+    "narrative": "Quiet paper surfaces with a deep forest accent: a calm notebook you carry outdoors, matching 'Calm by default'.",
+    "keywords": [
+      "calm",
+      "paper",
+      "forest",
+      "quiet"
+    ],
+    "derived_from_principles": [
+      "P1",
+      "P2"
+    ]
+  },
+  "references": [
+    {
+      "type": "skill",
+      "name": "frontend-design",
+      "source": "anthropics/skills",
+      "how_used": "Used the plan → review-against-brief process and its list of AI-default looks to reject cream+terracotta and SaaS card kits."
+    },
+    {
+      "type": "guideline",
+      "name": "Apple Human Interface Guidelines",
+      "source": "https://developer.apple.com/design/human-interface-guidelines/",
+      "how_used": "Dynamic Type styles, dark mode palette, in-app purchase paywall clarity and restore button."
+    }
+  ],
+  "anti_generic": {
+    "avoided_cliches": [
+      "indigo/violet gradient accent",
+      "cream background with terracotta accent",
+      "identical rounded cards with grey shadows"
+    ],
+    "signature_elements": [
+      "deep forest accent used only for the primary action",
+      "paper-like flat surfaces with hairline separators"
+    ],
+    "rationale": "The subject is calm outdoor thinking; colour comes from forest and paper, not from a UI kit."
+  },
+  "color": {
+    "light": {
+      "background": "#F7F8F5",
+      "surface": "#FFFFFF",
+      "text_primary": "#181D1B",
+      "text_secondary": "#57625D",
+      "accent": "#206A53",
+      "accent_text": "#FFFFFF",
+      "separator": "#D9DEDB"
+    },
+    "dark": {
+      "background": "#141716",
+      "surface": "#212624",
+      "text_primary": "#F0F3F1",
+      "text_secondary": "#ADB8B3",
+      "accent": "#7BCCAC",
+      "accent_text": "#0C211A",
+      "separator": "#383F3C"
+    }
+  },
+  "typography": {
+    "design": "default",
+    "display_design": "serif",
+    "text_styles": {
+      "title": "largeTitle",
+      "headline": "headline",
+      "body": "body",
+      "caption": "footnote"
+    }
+  },
+  "shape": {
+    "corner_radius": 14,
+    "card_style": "flat"
+  },
+  "spacing": {
+    "unit": 8
+  },
+  "iconography": {
+    "sf_symbols_weight": "regular"
+  },
+  "screenshot_style": {
+    "background": {
+      "type": "gradient",
+      "colors": [
+        "#1E5A47",
+        "#2F7D63"
+      ],
+      "angle": 160,
+      "pattern": "dots"
+    },
+    "caption_color": "#FFFFFF",
+    "subcaption_color": "#E3F1EA",
+    "caption_weight": "bold",
+    "layout": "caption_top",
+    "device_frame": true,
+    "frame_color": "#0F1F19"
+  }
+}

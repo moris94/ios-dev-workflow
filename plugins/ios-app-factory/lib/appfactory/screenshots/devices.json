@@ -1,0 +1,26 @@
+{
+  "iphone_6_9": {
+    "display_type": "APP_IPHONE_67",
+    "label": "iPhone 6.9\" (also accepted for 6.7\")",
+    "size": [1320, 2868],
+    "raw_sizes": [[1320, 2868], [1290, 2796]],
+    "simulator": "iPhone 17 Pro Max",
+    "screen_corner_ratio": 0.085
+  },
+  "iphone_6_5": {
+    "display_type": "APP_IPHONE_65",
+    "label": "iPhone 6.5\"",
+    "size": [1284, 2778],
+    "raw_sizes": [[1284, 2778], [1242, 2688]],
+    "simulator": "iPhone 11 Pro Max",
+    "screen_corner_ratio": 0.08
+  },
+  "ipad_13": {
+    "display_type": "APP_IPAD_PRO_3GEN_129",
+    "label": "iPad 13\"",
+    "size": [2064, 2752],
+    "raw_sizes": [[2064, 2752], [2048, 2732]],
+    "simulator": "iPad Pro 13-inch (M4)",
+    "screen_corner_ratio": 0.03
+  }
+}

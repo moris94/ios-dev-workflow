@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ios-app-factory/schemas/screenshots_manifest.schema.json",
+  "title": "Screenshot manifest",
+  "type": "object",
+  "required": [
+    "generated_at",
+    "recipe_digest",
+    "items"
+  ],
+  "properties": {
+    "generated_at": {
+      "type": "string"
+    },
+    "recipe_digest": {
+      "type": "string"
+    },
+    "items": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "locale",
+          "device",
+          "scene",
+          "raw",
+          "final",
+          "raw_sha256",
+          "final_sha256",
+          "width",
+          "height",
+          "caption"
+        ],
+        "properties": {
+          "locale": {
+            "type": "string",
+            "minLength": 1
+          },
+          "device": {
+            "type": "string",
+            "minLength": 1
+          },
+          "scene": {
+            "type": "string",
+            "minLength": 1
+          },
+          "raw": {
+            "type": "string",
+            "minLength": 1
+          },
+          "final": {
+            "type": "string",
+            "minLength": 1
+          },
+          "raw_sha256": {
+            "type": "string",
+            "minLength": 1
+          },
+          "final_sha256": {
+            "type": "string",
+            "minLength": 1
+          },
+          "width": {
+            "type": "integer"
+          },
+          "height": {
+            "type": "integer"
+          },
+          "caption": {
+            "type": "object"
+          },
+          "order": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": true
+      },
+      "minItems": 1
+    }
+  },
+  "additionalProperties": true
+}

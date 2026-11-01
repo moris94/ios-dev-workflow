@@ -1,0 +1,74 @@
+{
+  "app_name_working": "Stillnote",
+  "one_liner": "Capture an idea in two taps, keep it forever, pay once.",
+  "problem": "Note apps have become cluttered and subscription-gated; capturing a quick thought takes too many steps.",
+  "target_users": [
+    {
+      "persona": "Busy professional who jots ideas on the go",
+      "needs": [
+        "fast capture",
+        "no clutter",
+        "no subscription"
+      ]
+    }
+  ],
+  "value_proposition": "The calmest way to capture and revisit ideas, with a one-time Pro unlock.",
+  "differentiation": [
+    {
+      "point": "Two-tap capture",
+      "vs_competitors": "Fixture Notes Pro and Fixture Mindbox need 4+ taps",
+      "evidence_source_ids": [
+        "S1",
+        "S3",
+        "S6"
+      ]
+    },
+    {
+      "point": "One-time purchase",
+      "vs_competitors": "Fixture Notes Pro and Fixture Paperlite require subscriptions",
+      "evidence_source_ids": [
+        "S1",
+        "S5",
+        "S7"
+      ]
+    }
+  ],
+  "key_features": [
+    {
+      "name": "Quick capture",
+      "description": "Title + note",
+      "priority": "must"
+    },
+    {
+      "name": "Browse & edit",
+      "description": "List, edit, delete",
+      "priority": "must"
+    },
+    {
+      "name": "Unlimited notes (Pro)",
+      "description": "Free tier 10 notes",
+      "priority": "must"
+    }
+  ],
+  "monetization_hypothesis": {
+    "model": "non_consumable",
+    "rationale": "Users explicitly reject subscriptions for simple notes [S7].",
+    "price_usd_hint": 4.99
+  },
+  "success_metrics": [
+    {
+      "metric": "Paywall to purchase conversion",
+      "target": ">= 4% in 30 days"
+    },
+    {
+      "metric": "Day-7 retention",
+      "target": ">= 25%"
+    }
+  ],
+  "risks": [
+    {
+      "risk": "Free tier too generous",
+      "mitigation": "Tune limit after launch"
+    }
+  ]
+}

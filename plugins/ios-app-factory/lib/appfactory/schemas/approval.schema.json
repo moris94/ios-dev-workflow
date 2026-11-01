@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ios-app-factory/schemas/approval.schema.json",
+  "title": "Human release approval",
+  "type": "object",
+  "required": [
+    "kind",
+    "readiness_digest",
+    "app_version",
+    "build_number",
+    "approver",
+    "approved_at",
+    "expires_at",
+    "interactive",
+    "signature"
+  ],
+  "properties": {
+    "kind": {
+      "enum": [
+        "submit",
+        "publish"
+      ]
+    },
+    "readiness_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "app_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "build_number": {
+      "type": [
+        "integer",
+        "string"
+      ]
+    },
+    "approver": {
+      "type": "string",
+      "minLength": 1
+    },
+    "approved_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "expires_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "interactive": {
+      "const": true
+    },
+    "signature": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "note": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

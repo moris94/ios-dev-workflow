@@ -1,0 +1,21 @@
+{
+  "identifier" : "00000000",
+  "nonRenewingSubscriptions" : [],
+  "products" : [
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : false,
+      "internalID" : "00000001",
+      "localizations" : [
+        { "description" : "Unlock everything, forever.", "displayName" : "Pro", "locale" : "en_US" },
+        { "description" : "すべての機能をずっと使えます。", "displayName" : "Pro", "locale" : "ja" }
+      ],
+      "productID" : "__BUNDLE_ID__.pro",
+      "referenceName" : "Pro (one-time)",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : { "_failTransactionsEnabled" : false, "_locale" : "en_US", "_storefront" : "USA", "_storeKitErrors" : [] },
+  "subscriptionGroups" : [],
+  "version" : { "major" : 3, "minor" : 0 }
+}

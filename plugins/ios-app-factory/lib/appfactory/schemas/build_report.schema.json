@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ios-app-factory/schemas/build_report.schema.json",
+  "title": "Build report",
+  "type": "object",
+  "required": [
+    "status",
+    "scheme",
+    "configuration",
+    "destination",
+    "source_digest",
+    "finished_at"
+  ],
+  "properties": {
+    "status": {
+      "enum": [
+        "success",
+        "failure"
+      ]
+    },
+    "scheme": {
+      "type": "string",
+      "minLength": 1
+    },
+    "configuration": {
+      "type": "string",
+      "minLength": 1
+    },
+    "destination": {
+      "type": "string",
+      "minLength": 1
+    },
+    "xcode_version": {
+      "type": "string"
+    },
+    "source_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "started_at": {
+      "type": "string"
+    },
+    "finished_at": {
+      "type": "string"
+    },
+    "warnings": {
+      "type": "integer"
+    },
+    "errors": {
+      "type": "integer"
+    },
+    "log": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}

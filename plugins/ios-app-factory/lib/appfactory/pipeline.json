@@ -1,0 +1,323 @@
+{
+  "version": 1,
+  "stages": [
+    {
+      "id": "research",
+      "title": "Competitor & demand research",
+      "agent": "market-researcher",
+      "skills": [
+        "market-research"
+      ],
+      "depends_on": [],
+      "inputs": [
+        "factory/idea.md",
+        "factory/config.json#research"
+      ],
+      "outputs": {
+        "include": [
+          "factory/artifacts/research/research.json",
+          "factory/artifacts/research/research.md"
+        ]
+      },
+      "gate": "research"
+    },
+    {
+      "id": "proposal",
+      "title": "App proposal (企画書)",
+      "agent": "product-manager",
+      "skills": [
+        "product-proposal"
+      ],
+      "depends_on": [
+        "research"
+      ],
+      "inputs": [
+        "factory/idea.md"
+      ],
+      "outputs": {
+        "include": [
+          "factory/artifacts/proposal/proposal.json",
+          "factory/artifacts/proposal/proposal.md"
+        ]
+      },
+      "gate": "proposal"
+    },
+    {
+      "id": "charter",
+      "title": "Product charter (憲章)",
+      "agent": "product-manager",
+      "skills": [
+        "product-charter"
+      ],
+      "depends_on": [
+        "proposal"
+      ],
+      "inputs": [],
+      "outputs": {
+        "include": [
+          "factory/artifacts/charter/charter.json",
+          "factory/artifacts/charter/charter.md"
+        ]
+      },
+      "gate": "charter"
+    },
+    {
+      "id": "mvp",
+      "title": "MVP specification incl. monetization",
+      "agent": "product-manager",
+      "skills": [
+        "mvp-spec",
+        "storekit-monetization"
+      ],
+      "depends_on": [
+        "proposal",
+        "charter"
+      ],
+      "inputs": [
+        "factory/config.json#app"
+      ],
+      "outputs": {
+        "include": [
+          "factory/artifacts/mvp/mvp.json",
+          "factory/artifacts/mvp/mvp.md"
+        ]
+      },
+      "gate": "mvp"
+    },
+    {
+      "id": "design",
+      "title": "Design concept & tokens",
+      "agent": "product-designer",
+      "skills": [
+        "design-concept"
+      ],
+      "depends_on": [
+        "charter",
+        "mvp"
+      ],
+      "inputs": [],
+      "outputs": {
+        "include": [
+          "factory/artifacts/design/design.json",
+          "factory/artifacts/design/design.md"
+        ]
+      },
+      "gate": "design"
+    },
+    {
+      "id": "implementation",
+      "title": "SwiftUI + SwiftData + StoreKit 2 implementation (build verified)",
+      "agent": "ios-developer",
+      "skills": [
+        "swiftui-implementation",
+        "storekit-monetization"
+      ],
+      "depends_on": [
+        "mvp",
+        "design"
+      ],
+      "inputs": [
+        "factory/config.json#app"
+      ],
+      "outputs": {
+        "include": [
+          "project.yml",
+          "App/Sources/**/*",
+          "App/Resources/**/*",
+          "AppTests/**/*",
+          "factory/reports/build.json"
+        ],
+        "exclude": [
+          "App/Resources/*.xcstrings"
+        ]
+      },
+      "gate": "implementation"
+    },
+    {
+      "id": "localization",
+      "title": "English (default) + Japanese localization",
+      "agent": "ios-developer",
+      "skills": [
+        "localization"
+      ],
+      "depends_on": [
+        "implementation"
+      ],
+      "inputs": [],
+      "outputs": {
+        "include": [
+          "App/Resources/*.xcstrings"
+        ]
+      },
+      "gate": "localization"
+    },
+    {
+      "id": "testing",
+      "title": "Unit tests, UI tests, build verification",
+      "agent": "qa-engineer",
+      "skills": [
+        "ios-testing"
+      ],
+      "depends_on": [
+        "implementation",
+        "localization"
+      ],
+      "inputs": [],
+      "outputs": {
+        "include": [
+          "AppUITests/**/*",
+          "factory/reports/tests.json"
+        ]
+      },
+      "gate": "testing"
+    },
+    {
+      "id": "aso",
+      "title": "ASO metadata & screenshot captions (en-US, ja)",
+      "agent": "product-manager",
+      "skills": [
+        "aso-copywriting"
+      ],
+      "depends_on": [
+        "research",
+        "charter",
+        "mvp",
+        "design"
+      ],
+      "inputs": [
+        "factory/config.json#app"
+      ],
+      "outputs": {
+        "include": [
+          "factory/artifacts/aso/aso.json"
+        ]
+      },
+      "gate": "aso"
+    },
+    {
+      "id": "screenshots",
+      "title": "Store screenshots captured from UI tests and composed",
+      "agent": "product-designer",
+      "skills": [
+        "store-screenshots"
+      ],
+      "depends_on": [
+        "testing",
+        "design",
+        "aso"
+      ],
+      "inputs": [
+        "factory/config.json#app,screenshots"
+      ],
+      "outputs": {
+        "include": [
+          "factory/screenshots/raw/**/*.png",
+          "factory/screenshots/final/**/*.png",
+          "factory/screenshots/manifest.json"
+        ]
+      },
+      "gate": "screenshots"
+    },
+    {
+      "id": "asc_sync",
+      "title": "App Store Connect metadata, pricing, IAP, screenshots",
+      "agent": "release-manager",
+      "skills": [
+        "asc-sync"
+      ],
+      "depends_on": [
+        "mvp",
+        "aso",
+        "screenshots"
+      ],
+      "inputs": [
+        "factory/config.json#app,asc"
+      ],
+      "outputs": {
+        "include": [
+          "factory/asc/plan.json",
+          "factory/asc/sync-report.json"
+        ]
+      },
+      "gate": "asc_sync"
+    },
+    {
+      "id": "testflight",
+      "title": "Archive, upload to TestFlight, processing verified",
+      "agent": "release-manager",
+      "skills": [
+        "testflight-release"
+      ],
+      "depends_on": [
+        "testing",
+        "asc_sync"
+      ],
+      "inputs": [],
+      "outputs": {
+        "include": [
+          "factory/reports/testflight.json"
+        ]
+      },
+      "gate": "testflight"
+    },
+    {
+      "id": "release_readiness",
+      "title": "Release readiness (purchase test, ASC state, all gates)",
+      "agent": "release-manager",
+      "skills": [
+        "testflight-release"
+      ],
+      "depends_on": [
+        "testflight"
+      ],
+      "inputs": [
+        "factory/reports/purchase-test.json",
+        "factory/config.json#app,release"
+      ],
+      "outputs": {
+        "include": [
+          "factory/artifacts/release/readiness.json"
+        ]
+      },
+      "gate": "release_readiness"
+    },
+    {
+      "id": "submit",
+      "title": "Submit for App Review (human approval required)",
+      "agent": "release-manager",
+      "skills": [
+        "release-approval"
+      ],
+      "depends_on": [
+        "release_readiness"
+      ],
+      "inputs": [],
+      "outputs": {
+        "include": [
+          "factory/reports/submission.json"
+        ]
+      },
+      "gate": "submit",
+      "human_approval": "submit"
+    },
+    {
+      "id": "publish",
+      "title": "Release approved version (human approval required)",
+      "agent": "release-manager",
+      "skills": [
+        "release-approval"
+      ],
+      "depends_on": [
+        "submit"
+      ],
+      "inputs": [],
+      "outputs": {
+        "include": [
+          "factory/reports/release.json"
+        ]
+      },
+      "gate": "publish",
+      "human_approval": "publish"
+    }
+  ]
+}

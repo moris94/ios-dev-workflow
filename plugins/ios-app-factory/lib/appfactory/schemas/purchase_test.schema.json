@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ios-app-factory/schemas/purchase_test.schema.json",
+  "title": "Manual purchase test evidence",
+  "type": "object",
+  "required": [
+    "tester",
+    "tested_at",
+    "build_number",
+    "environment",
+    "cases",
+    "recorded_interactively"
+  ],
+  "properties": {
+    "tester": {
+      "type": "string",
+      "minLength": 1
+    },
+    "tested_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "build_number": {
+      "type": [
+        "integer",
+        "string"
+      ]
+    },
+    "environment": {
+      "enum": [
+        "sandbox",
+        "testflight"
+      ]
+    },
+    "cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "result"
+        ],
+        "properties": {
+          "id": {
+            "enum": [
+              "purchase",
+              "restore",
+              "ja_paywall",
+              "en_paywall",
+              "cancel",
+              "ask_to_buy",
+              "interrupted"
+            ]
+          },
+          "result": {
+            "enum": [
+              "pass",
+              "fail",
+              "n/a"
+            ]
+          },
+          "notes": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 4
+    },
+    "recorded_interactively": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,406 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ios-app-factory/schemas/mvp.schema.json",
+  "title": "MVP specification",
+  "type": "object",
+  "required": [
+    "version",
+    "scope_summary",
+    "features",
+    "screens",
+    "data_model",
+    "monetization",
+    "screenshot_scenes",
+    "out_of_scope",
+    "privacy",
+    "category"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+(\\.[0-9]+)?$"
+    },
+    "scope_summary": {
+      "type": "string",
+      "minLength": 20
+    },
+    "features": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "description",
+          "priority",
+          "principle_ids",
+          "acceptance_criteria",
+          "screens"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^F[0-9]+$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "priority": {
+            "enum": [
+              "must",
+              "should"
+            ]
+          },
+          "principle_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^P[0-9]+$"
+            },
+            "minItems": 1
+          },
+          "acceptance_criteria": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1
+          },
+          "screens": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1
+          },
+          "requires_pro": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "screens": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "purpose"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-zA-Z0-9_]*$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "purpose": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 2
+    },
+    "data_model": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "entity",
+          "fields"
+        ],
+        "properties": {
+          "entity": {
+            "type": "string",
+            "pattern": "^[A-Z][A-Za-z0-9]*$"
+          },
+          "fields": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "name",
+                "type"
+              ],
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "type": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "optional": {
+                  "type": "boolean"
+                }
+              },
+              "additionalProperties": false
+            },
+            "minItems": 1
+          }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "monetization": {
+      "type": "object",
+      "required": [
+        "model",
+        "products",
+        "free_tier",
+        "paywall_trigger"
+      ],
+      "properties": {
+        "model": {
+          "enum": [
+            "non_consumable",
+            "subscription",
+            "consumable",
+            "none"
+          ]
+        },
+        "products": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "product_id",
+              "reference_name",
+              "type",
+              "price_usd",
+              "localizations",
+              "unlocks"
+            ],
+            "properties": {
+              "product_id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9._-]+$"
+              },
+              "reference_name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 64
+              },
+              "type": {
+                "enum": [
+                  "NON_CONSUMABLE",
+                  "CONSUMABLE",
+                  "AUTO_RENEWABLE"
+                ]
+              },
+              "price_usd": {
+                "type": "number",
+                "exclusiveMinimum": 0
+              },
+              "family_sharable": {
+                "type": "boolean"
+              },
+              "review_note": {
+                "type": "string"
+              },
+              "localizations": {
+                "type": "object",
+                "required": [
+                  "en-US",
+                  "ja"
+                ],
+                "properties": {
+                  "en-US": {
+                    "type": "object",
+                    "required": [
+                      "name",
+                      "description"
+                    ],
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 30
+                      },
+                      "description": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 45
+                      }
+                    },
+                    "additionalProperties": false
+                  },
+                  "ja": {
+                    "type": "object",
+                    "required": [
+                      "name",
+                      "description"
+                    ],
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 30
+                      },
+                      "description": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 45
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "additionalProperties": false
+              },
+              "unlocks": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "pattern": "^F[0-9]+$"
+                },
+                "minItems": 1
+              }
+            },
+            "additionalProperties": false
+          },
+          "minItems": 0
+        },
+        "free_tier": {
+          "type": "string",
+          "minLength": 1
+        },
+        "paywall_trigger": {
+          "type": "string",
+          "minLength": 1
+        },
+        "justification": {
+          "type": "string"
+        },
+        "waiver": {
+          "type": "object",
+          "required": [
+            "reason",
+            "approved_by"
+          ],
+          "properties": {
+            "reason": {
+              "type": "string",
+              "minLength": 20
+            },
+            "approved_by": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "screenshot_scenes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "screen",
+          "state",
+          "message"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "screen": {
+            "type": "string",
+            "minLength": 1
+          },
+          "state": {
+            "type": "string",
+            "minLength": 1
+          },
+          "message": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 3,
+      "maxItems": 10
+    },
+    "out_of_scope": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    },
+    "privacy": {
+      "type": "object",
+      "required": [
+        "collects_data",
+        "data_types",
+        "tracking"
+      ],
+      "properties": {
+        "collects_data": {
+          "type": "boolean"
+        },
+        "data_types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 0
+        },
+        "tracking": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "category": {
+      "enum": [
+        "BOOKS",
+        "BUSINESS",
+        "EDUCATION",
+        "ENTERTAINMENT",
+        "FINANCE",
+        "FOOD_AND_DRINK",
+        "GAMES",
+        "GRAPHICS_AND_DESIGN",
+        "HEALTH_AND_FITNESS",
+        "LIFESTYLE",
+        "MEDICAL",
+        "MUSIC",
+        "NAVIGATION",
+        "NEWS",
+        "PHOTO_AND_VIDEO",
+        "PRODUCTIVITY",
+        "REFERENCE",
+        "SHOPPING",
+        "SOCIAL_NETWORKING",
+        "SPORTS",
+        "TRAVEL",
+        "UTILITIES",
+        "WEATHER",
+        "DEVELOPER_TOOLS"
+      ]
+    }
+  },
+  "additionalProperties": false
+}

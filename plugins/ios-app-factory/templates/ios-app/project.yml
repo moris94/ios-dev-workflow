@@ -1,0 +1,83 @@
+name: __PROJECT_NAME__
+options:
+  deploymentTarget:
+    iOS: "__MIN_IOS__"
+  developmentLanguage: en
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+settings:
+  base:
+    MARKETING_VERSION: "__VERSION__"
+    CURRENT_PROJECT_VERSION: "__BUILD_NUMBER__"
+    DEVELOPMENT_TEAM: "__TEAM_ID__"
+    SWIFT_VERSION: "5.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    LOCALIZATION_PREFERS_STRING_CATALOGS: YES
+    SWIFT_EMIT_LOC_STRINGS: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    DEAD_CODE_STRIPPING: YES
+targets:
+  __PROJECT_NAME__:
+    type: application
+    platform: iOS
+    sources:
+      - path: App/Sources
+      - path: App/Resources
+        excludes:
+          - Products.storekit
+      - path: App/Info.plist
+        buildPhase: none
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: __BUNDLE_ID__
+        INFOPLIST_FILE: App/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CODE_SIGN_STYLE: Automatic
+  AppTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: AppTests
+      - path: App/Resources/Products.storekit
+        buildPhase: resources
+    dependencies:
+      - target: __PROJECT_NAME__
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: __BUNDLE_ID__.tests
+        GENERATE_INFOPLIST_FILE: YES
+  AppUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: AppUITests
+    dependencies:
+      - target: __PROJECT_NAME__
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: __BUNDLE_ID__.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: __PROJECT_NAME__
+schemes:
+  __PROJECT_NAME__:
+    build:
+      targets:
+        __PROJECT_NAME__: all
+        AppTests: [test]
+        AppUITests: [test]
+    run:
+      config: Debug
+      storeKitConfiguration: App/Resources/Products.storekit
+    test:
+      config: Debug
+      gatherCoverageData: true
+      coverageTargets:
+        - __PROJECT_NAME__
+      targets:
+        - AppTests
+        - AppUITests
+    archive:
+      config: Release

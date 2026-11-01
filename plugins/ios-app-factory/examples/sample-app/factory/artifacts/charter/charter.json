@@ -1,0 +1,44 @@
+{
+  "mission": "Make capturing a thought effortless and calm.",
+  "value_proposition": "Two-tap capture, no clutter, pay once.",
+  "target_user": "People who think on the go",
+  "principles": [
+    {
+      "id": "P1",
+      "name": "Two-tap capture",
+      "statement": "Writing a note starts within two taps from launch.",
+      "rationale": "Clutter is the top complaint [S6].",
+      "check": "UI test: launch → add → title field focused in ≤2 taps"
+    },
+    {
+      "id": "P2",
+      "name": "Calm by default",
+      "statement": "No badges, streaks or nags.",
+      "rationale": "Users want calm tools [S7].",
+      "check": "No notification permission request in the app"
+    },
+    {
+      "id": "P3",
+      "name": "Fair pricing",
+      "statement": "Pay once; free tier stays useful.",
+      "rationale": "Subscription fatigue [S7].",
+      "check": "Only non-consumable products exist; free tier has a limit, not a trial"
+    }
+  ],
+  "non_goals": [
+    "Cloud sync in v1",
+    "Collaboration"
+  ],
+  "quality_bar": {
+    "accessibility": "Dynamic Type, VoiceOver labels, 4.5:1 contrast",
+    "performance": "Cold start < 1s",
+    "privacy": "All data on device (SwiftData)"
+  },
+  "tone_of_voice": {
+    "en-US": "Quiet, warm, concise.",
+    "ja": "落ち着いた、やさしい「です・ます」調で簡潔に。"
+  },
+  "decision_rules": [
+    "If it adds a step to capture, it's out."
+  ]
+}

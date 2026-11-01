@@ -1,0 +1,12 @@
+{
+  "name": "ios-app-factory",
+  "displayName": "iOS App Factory",
+  "version": "0.1.0",
+  "description": "Idea-to-App-Store pipeline: market research, proposal, charter, MVP, design, SwiftUI/SwiftData/StoreKit 2 implementation, en/ja localization, tests, store screenshots, ASO and App Store Connect sync. Gated, resumable, and human-approved before review submission or release.",
+  "author": {
+    "name": "moris94"
+  },
+  "repository": "https://github.com/moris94/ios-dev-workflow",
+  "license": "MIT",
+  "keywords": ["ios", "swiftui", "storekit", "app-store-connect", "fastlane", "localization", "aso", "workflow"]
+}
