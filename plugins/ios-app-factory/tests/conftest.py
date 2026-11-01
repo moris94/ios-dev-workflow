@@ -14,15 +14,17 @@ from appfactory.jsonio import read_json, write_json_atomic  # noqa: E402
 from appfactory.project import Project  # noqa: E402
 
 SAMPLE = PLUGIN / "examples" / "sample-app"
-LINKS = {"support": "https://fixtures.example.org/stillnote/support",
-         "privacy_policy": "https://fixtures.example.org/stillnote/privacy",
+HELP_URL = "https://fixtures.example.org/stillnote/help"
+LINKS = {"support": HELP_URL,
+         "privacy_policy": HELP_URL,
          "terms": "https://www.apple.com/legal/internet-services/itunes/dev/stdeula/"}
 
 
 @pytest.fixture(autouse=True)
 def _isolated_env(monkeypatch, tmp_path):
     for k in ("CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "ASC_KEY_ID", "ASC_ISSUER_ID", "ASC_PRIVATE_KEY_PATH",
-              "ASC_PRIVATE_KEY", "ASC_PRIVATE_KEY_BASE64", "APP_FACTORY_PROJECT", "FACTORY_REHEARSAL", "CLAUDE_PROJECT_DIR"):
+              "ASC_PRIVATE_KEY", "ASC_PRIVATE_KEY_BASE64", "APP_FACTORY_PROJECT", "FACTORY_REHEARSAL", "CLAUDE_PROJECT_DIR",
+              "FACTORY_SUPPORT_EMAIL"):
         monkeypatch.delenv(k, raising=False)
     monkeypatch.setenv("FACTORY_APPROVER_KEY_PATH", str(tmp_path / "approver-home" / "approver.key"))
 
@@ -71,3 +73,23 @@ def pass_stage(project: Project, stage: str, owner: str = "test") -> dict:
         bad = [c for c in report["checks"] if not c["passed"] and c["severity"] == "error"]
         raise AssertionError(f"gate {stage} failed: {json.dumps(bad, ensure_ascii=False, indent=1)[:3000]}")
     return out
+
+
+PLANNING = ("research", "proposal", "charter", "mvp", "design", "support_page", "aso", "app_icon")
+
+
+def pass_planning(project: Project, until: str = "app_icon"):
+    """Pass the planning stages with the sample artifacts. support_page uses the human-provided
+    links already in config (use-existing); app_icon renders the sample icon spec."""
+    from appfactory import icon, support_page
+
+    for stage in PLANNING:
+        if stage == "support_page":
+            support_page.use_existing(project)
+        else:
+            copy_artifacts(project, stage)
+            if stage == "app_icon":
+                icon.render(project)
+        pass_stage(project, stage)
+        if stage == until:
+            return

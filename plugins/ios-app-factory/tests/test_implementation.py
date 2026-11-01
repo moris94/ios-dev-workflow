@@ -5,14 +5,12 @@ from appfactory.hashing import source_digest
 from appfactory.jsonio import read_json
 from appfactory.reports import write_build_report
 from appfactory.scaffold import scaffold
-from conftest import copy_artifacts, pass_stage, run
+from conftest import copy_artifacts, pass_planning, pass_stage, run
 
 
 def _prepare(project):
-    copy_artifacts(project, "research", "proposal", "charter", "mvp", "design")
-    for st in ("research", "proposal", "charter", "mvp", "design"):
-        pass_stage(project, st)
     scaffold(project)
+    pass_planning(project)
     codegen.generate(project)
 
 
@@ -35,7 +33,7 @@ def test_codegen_outputs(project):
     assert "static let accent = dynamic(RGB(0.1255, 0.4157, 0.3255)" in tokens
     catalog = (project.root / codegen.PRODUCT_CATALOG).read_text()
     assert '"com.example.stillnote.pro"' in catalog and 'proFeatureIDs: Set<String> = ["F3"]' in catalog
-    assert "fixtures.example.org/stillnote/privacy" in (project.root / codegen.APP_LINKS).read_text()
+    assert "fixtures.example.org/stillnote/help" in (project.root / codegen.APP_LINKS).read_text()
     sk = read_json(project.root / codegen.STOREKIT_CONFIG)
     assert sk["products"][0]["type"] == "NonConsumable" and sk["products"][0]["displayPrice"] == "4.99"
     assert codegen.generate(project)[codegen.DESIGN_TOKENS] == "unchanged"  # idempotent

@@ -33,6 +33,14 @@ class EngineError(RuntimeError):
     pass
 
 
+def _dotted(data, path: str):
+    for part in path.split("."):
+        if not isinstance(data, dict):
+            return None
+        data = data.get(part)
+    return data
+
+
 class Engine:
     def __init__(self, project: Project, pipeline: Optional[Pipeline] = None):
         self.project = project
@@ -94,8 +102,8 @@ class Engine:
         return digest_files(self.project.root, stage.outputs_include, stage.outputs_exclude)["files"]
 
     def input_digest(self, stage: Stage, state: dict) -> str:
-        """Digest of upstream outputs + declared inputs. An input ``file.json#a,b`` only covers
-        the top-level keys a and b, so unrelated config edits don't invalidate a stage."""
+        """Digest of upstream outputs + declared inputs. An input ``file.json#a,b.c`` only covers
+        the (dotted) keys listed, so unrelated config edits don't invalidate a stage."""
         deps = {d: state["stages"][d].get("output_digest") for d in stage.depends_on}
         plain = [i for i in stage.inputs if "#" not in i]
         files = digest_files(self.project.root, plain)["files"] if plain else {}
@@ -103,7 +111,7 @@ class Engine:
             if "#" in spec:
                 rel, keys = spec.split("#", 1)
                 data = read_json(self.project.root / rel) or {}
-                files[spec] = sha256_json({k: data.get(k) for k in keys.split(",")})
+                files[spec] = sha256_json({k: _dotted(data, k) for k in keys.split(",")})
         return sha256_json({"deps": deps, "inputs": files})
 
     # --------------------------------------------------------------- queries

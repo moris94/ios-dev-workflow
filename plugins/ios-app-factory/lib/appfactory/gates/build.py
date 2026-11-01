@@ -4,6 +4,7 @@ from __future__ import annotations
 import re
 
 from .. import codegen
+from ..icon import APP_ICON
 from ..hashing import expand_globs, source_digest
 from ..schemas_util import validate
 from . import gate
@@ -53,7 +54,7 @@ def implementation_gate(ctx):
                           ("AppStore.sync", "restore purchases via AppStore.sync"),
                           (".finish()", "finishes transactions")]:
         ctx.check(f"storekit2.{needle}", needle in all_src, label)
-    icon = root / codegen.APP_ICON
+    icon = root / APP_ICON
     if icon.exists():
         from ..screenshots.compose import png_info
 
@@ -61,7 +62,7 @@ def implementation_gate(ctx):
         ctx.check("icon.format", (info["width"], info["height"]) == (1024, 1024) and not info["has_alpha"],
                   "App icon 1024x1024 without alpha")
     else:
-        ctx.check("icon.format", False, f"missing {codegen.APP_ICON} (run `app-factory codegen` or add a designed icon)")
+        ctx.check("icon.format", False, f"missing {APP_ICON} (app_icon stage: `app-factory icon render`)")
     ctx.check("swiftui.no-uikit-lifecycle", "UIApplicationMain" not in all_src and "@main" in all_src, "SwiftUI App lifecycle")
 
     mvp = ctx.load_json(MVP)

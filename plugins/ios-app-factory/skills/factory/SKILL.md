@@ -52,8 +52,8 @@ Repeat until `AF next` returns `null`, or a **human stop** (section 3) is reache
    required output paths, the gate command, and — on retries — the failing
    checks from `factory/gates/<id>.json`. Ask it to finish by running the gate
    itself and returning the gate summary.
-   Independent work may be parallelised (e.g. `aso` can run while `testing`
-   runs, because neither depends on the other).
+   Stage order: research → proposal → charter → mvp → design → support_page → aso → app_icon →
+   implementation → localization → testing → screenshots → asc_sync → testflight → release_readiness → submit → publish.
 5. `AF gate <id> --owner ${CLAUDE_SESSION_ID}` (exit 0 = pass, 2 = fail).
 6. On failure, re-delegate with the failing checks. After **3 failed attempts**,
    `AF fail <id> --reason "<summary>"` and stop: explain to the user what blocks the gate.
@@ -68,6 +68,8 @@ Stage → agent → skills (from `pipeline.json`):
 | research | market-researcher | market-research |
 | proposal, charter, mvp | product-manager | product-proposal, product-charter, mvp-spec, storekit-monetization |
 | design | product-designer | design-concept |
+| support_page | release-manager | support-page (Notion MCP when connected) |
+| app_icon | product-designer | app-icon |
 | implementation, localization | ios-developer | swiftui-implementation, storekit-monetization, localization |
 | testing | qa-engineer | ios-testing |
 | aso | product-manager | aso-copywriting |
@@ -89,6 +91,10 @@ App Store Connect writes are ledger-protected (`factory/asc/ledger.json`), so re
 - **Research NO-GO** (`verdict.go=false`): present the evidence, ask whether to pivot.
 - **Monetization waiver**: the first release must include payments (prefer non-consumable).
   Only the human may waive it (`mvp.json monetization.waiver.approved_by`).
+- **Support e-mail / page publishing**: the `support_page` stage needs `FACTORY_SUPPORT_EMAIL`. If no Notion MCP
+  server is connected, show the rendered page text and ask the human to publish it and give you the URL.
+  Prefer delegating `support_page` to the release-manager only when Notion tools are available to subagents;
+  otherwise run that stage yourself in the main conversation (MCP tools are always available here).
 - **Xcode unavailable** (not macOS): stop before `implementation` builds; say what to run on a Mac.
 - **ASC credentials / app record**: `asc_sync` in apply mode and `testflight` need `ASC_KEY_ID`,
   `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY_PATH` and an existing app record. Without them run the dry-run

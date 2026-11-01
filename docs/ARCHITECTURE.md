@@ -40,7 +40,7 @@
 ```
 
 責務の分離:
-- **Skills** = 専門知識と手順（16 個。オーケストレーター、状態表示、工程ごとの専門 Skill、人間承認）
+- **Skills** = 専門知識と手順（18 個。オーケストレーター、状態表示、工程ごとの専門 Skill、人間承認）
 - **Subagents** = 役割とツール権限（6 個）。工程の Skill をプリロード
 - **エンジン（Python）** = 決定的な処理: 状態、ロック、ダイジェスト、ゲート、コード生成、合成、API 計画/実行、承認
 - **スクリプト（bash）** = OS 依存の外部操作（xcodegen、xcodebuild、simctl、xcresulttool、fastlane）
@@ -51,13 +51,17 @@
 各工程は `id, agent, skills, depends_on, inputs, outputs{include,exclude}, gate, human_approval` を持つ。出力の所有権は重ならない（例: `*.xcstrings` は localization のもので implementation からは除外、`AppUITests/` は testing のもの）。そのため、ある工程の作業が別の合格済み工程を無関係に stale にすることはない。
 
 ```
-research → proposal → charter → mvp → design → implementation → localization → testing
-                                   └────────────→ aso ───────────────┐            │
-                                                                     ▼            ▼
-                                                                screenshots ← (testing, design, aso)
-                                                                     ▼
-                                              asc_sync → testflight → release_readiness → submit → publish
+research → proposal → charter → mvp → design → support_page → aso → app_icon
+                                                                        ↓
+                                   implementation → localization → testing
+                                                                      ↓
+                                                     screenshots ← (testing, design, aso)
+                                                          ↓
+                                   asc_sync → testflight → release_readiness → submit → publish
 ```
+
+- `support_page`: 未指定ならサポート＋プライバシーポリシーを 1 ページ（英日）にまとめる。メールは `FACTORY_SUPPORT_EMAIL` から取り、コミットする下書きはプレースホルダーのまま。Notion MCP があれば Claude が投稿し、無ければ文面を表示して人間が投稿する。`support-page record` が URL を `app.links.support` と `privacy_policy` の両方に書き込み、ASO・`AppLinks.swift`・ASC が同じ URL を使う。
+- `app_icon`: デザイナーが文字なしのベクター仕様（`icon.json`）を書き、エンジンがライト/ダーク/ティントの 3 種を決定的に描画する。ゲートは憲章・デザイン・ASO との対応、パレット、コントラスト、64px での占有率、再描画の一致を確認する。アイコンのファイルはこの工程が所有し、implementation の出力から除外している。
 
 ## 3. 成果物（明示的な契約）
 
@@ -69,6 +73,8 @@ research → proposal → charter → mvp → design → implementation → loca
 | mvp.json | mvp | agent |
 | design.json | design | agent |
 | aso.json | aso | agent |
+| support_page/page.md, publication.json | support_publication | `support-page draft/record` |
+| app_icon/icon.json | app_icon | agent → `icon render` |
 | build.json / tests.json | build_report / test_report | scripts → `app-factory report` |
 | screenshots/manifest.json | screenshots_manifest | `screenshots render` |
 | asc/plan.json | asc_plan | `asc plan` |
@@ -123,6 +129,6 @@ research → proposal → charter → mvp → design → implementation → loca
 ## 9. テスト戦略
 
 - 単体: engine / gates / l10n / codegen / screenshots / asc（planner, executor, ledger, JWT）/ approval / guards / redact
-- 統合: `test_e2e.py` が CLI で全 15 工程を通す（macOS 専用の手順はレポートを書くヘルパーで代替し、ASC は内蔵シミュレーターを使う）
+- 統合: `test_e2e.py` が CLI で全 17 工程を通す（macOS 専用の手順はレポートを書くヘルパーで代替し、ASC は内蔵シミュレーターを使う）
 - 構造: `test_plugin_structure.py` が pipeline ↔ agents ↔ skills ↔ gates ↔ schemas の参照整合性、フロントマター、実行権限、テンプレートのプレースホルダーを検証
 - 外部: `claude plugin validate --strict`

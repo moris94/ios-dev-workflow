@@ -74,7 +74,7 @@
         "charter"
       ],
       "inputs": [
-        "factory/config.json#app"
+        "factory/config.json#app.bundle_id,app.version,app.locales"
       ],
       "outputs": {
         "include": [
@@ -105,6 +105,75 @@
       "gate": "design"
     },
     {
+      "id": "support_page",
+      "title": "Combined privacy policy & support page (en/ja), published",
+      "agent": "release-manager",
+      "skills": [
+        "support-page"
+      ],
+      "depends_on": [
+        "charter",
+        "mvp"
+      ],
+      "inputs": [
+        "factory/config.json#app.name,app.links"
+      ],
+      "outputs": {
+        "include": [
+          "factory/artifacts/support_page/page.md",
+          "factory/artifacts/support_page/publication.json"
+        ]
+      },
+      "gate": "support_page"
+    },
+    {
+      "id": "aso",
+      "title": "ASO metadata & screenshot captions (en-US, ja)",
+      "agent": "product-manager",
+      "skills": [
+        "aso-copywriting"
+      ],
+      "depends_on": [
+        "research",
+        "charter",
+        "mvp",
+        "design",
+        "support_page"
+      ],
+      "inputs": [
+        "factory/config.json#app.links"
+      ],
+      "outputs": {
+        "include": [
+          "factory/artifacts/aso/aso.json"
+        ]
+      },
+      "gate": "aso"
+    },
+    {
+      "id": "app_icon",
+      "title": "App icon from design, charter and ASO",
+      "agent": "product-designer",
+      "skills": [
+        "app-icon"
+      ],
+      "depends_on": [
+        "research",
+        "charter",
+        "design",
+        "aso"
+      ],
+      "inputs": [],
+      "outputs": {
+        "include": [
+          "factory/artifacts/app_icon/icon.json",
+          "factory/artifacts/app_icon/icon.md",
+          "App/Resources/Assets.xcassets/AppIcon.appiconset/*"
+        ]
+      },
+      "gate": "app_icon"
+    },
+    {
       "id": "implementation",
       "title": "SwiftUI + SwiftData + StoreKit 2 implementation (build verified)",
       "agent": "ios-developer",
@@ -114,7 +183,8 @@
       ],
       "depends_on": [
         "mvp",
-        "design"
+        "design",
+        "app_icon"
       ],
       "inputs": [
         "factory/config.json#app"
@@ -128,7 +198,8 @@
           "factory/reports/build.json"
         ],
         "exclude": [
-          "App/Resources/*.xcstrings"
+          "App/Resources/*.xcstrings",
+          "App/Resources/Assets.xcassets/AppIcon.appiconset/*"
         ]
       },
       "gate": "implementation"
@@ -170,29 +241,6 @@
         ]
       },
       "gate": "testing"
-    },
-    {
-      "id": "aso",
-      "title": "ASO metadata & screenshot captions (en-US, ja)",
-      "agent": "product-manager",
-      "skills": [
-        "aso-copywriting"
-      ],
-      "depends_on": [
-        "research",
-        "charter",
-        "mvp",
-        "design"
-      ],
-      "inputs": [
-        "factory/config.json#app"
-      ],
-      "outputs": {
-        "include": [
-          "factory/artifacts/aso/aso.json"
-        ]
-      },
-      "gate": "aso"
     },
     {
       "id": "screenshots",

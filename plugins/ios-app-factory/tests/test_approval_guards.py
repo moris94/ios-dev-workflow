@@ -132,6 +132,10 @@ def test_git_commit_blocks_staged_temp_files(project):
     ("App/Sources/Design/DesignTokens.swift", True),
     ("factory/screenshots/final/ja/iphone_6_9/01_home.png", True),
     ("keys/AuthKey.p8", True),
+    ("factory/artifacts/support_page/publication.json", True),
+    ("App/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png", True),
+    ("factory/artifacts/app_icon/icon.json", False),
+    ("factory/artifacts/support_page/page.md", False),
     ("factory/artifacts/mvp/mvp.json", False),
     ("App/Sources/Features/Home/HomeView.swift", False),
 ])

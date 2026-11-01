@@ -1,6 +1,6 @@
 # ios-dev-workflow — iOS App Factory plugin for Claude Code
 
-アプリのアイデアを 1 つ渡すと、**競合・需要調査 → 企画書 → 憲章 → MVP（課金必須・買い切り優先）→ デザイン → SwiftUI 実装 → 日英ローカライズ → 単体/UI 試験 → ストア用スクリーンショット → ASO → App Store Connect 設定 → TestFlight → リリース準備確認** までを自動で進める、再利用可能な Claude Code プラグイン **`ios-app-factory`** です。
+アプリのアイデアを 1 つ渡すと、**競合・需要調査 → 企画書 → 憲章 → MVP（課金必須・買い切り優先）→ デザイン → サポート/プライバシーページ公開 → ASO → アプリアイコン → SwiftUI 実装 → 日英ローカライズ → 単体/UI 試験 → ストア用スクリーンショット → App Store Connect 設定 → TestFlight → リリース準備確認** までを自動で進める、再利用可能な Claude Code プラグイン **`ios-app-factory`** です。
 
 各工程は明示的な成果物（JSON Schema 付き）でつながり、機械的に検証できる品質ゲートを通過しないと次へ進みません。状態はリポジトリに保存されるので、セッションが切れても途中から再開できます。**審査提出と公開は、人間が自分の端末で承認したときだけ実行されます。**（Hooks と実行スクリプトの両方で強制）
 
@@ -44,16 +44,18 @@
 | 3. 憲章 | product-manager | product-charter | `charter.json/.md` |
 | 4. MVP 仕様（課金必須・買い切り優先） | product-manager | mvp-spec, storekit-monetization | `mvp.json/.md` |
 | 5. デザインコンセプト | product-designer | design-concept | `design.json/.md` → `DesignTokens.swift` |
-| 6. SwiftUI 実装＋ビルド検証 | ios-developer | swiftui-implementation, storekit-monetization | `App/`, `AppTests/`, `build.json` |
-| 7. 日英ローカライズ | ios-developer | localization | `*.xcstrings` |
-| 8. 単体・UI 試験 | qa-engineer | ios-testing | `AppUITests/`, `tests.json` |
-| 9. ASO メタデータ・キャプション | product-manager | aso-copywriting | `aso.json` |
-| 10. ストア用スクリーンショット | product-designer | store-screenshots | `factory/screenshots/**` |
-| 11. App Store Connect 設定 | release-manager | asc-sync | `factory/asc/plan.json`, ledger |
-| 12. TestFlight | release-manager | testflight-release | `testflight.json` |
-| 13. リリース準備確認 | release-manager | testflight-release | `readiness.json` |
-| 14. 審査提出（**人間承認**） | release-manager | release-approval | `submission.json` |
-| 15. 公開（**人間承認**） | release-manager | release-approval | `release.json` |
+| 6. サポート＋プライバシーポリシーページ（日英・1 ページ）を Notion で公開 | release-manager | support-page | `page.md`, `publication.json` |
+| 7. ASO メタデータ・キャプション | product-manager | aso-copywriting | `aso.json` |
+| 8. アプリアイコン（デザイン・憲章・ASO から） | product-designer | app-icon | `icon.json` → `AppIcon.appiconset`（ライト/ダーク/ティント） |
+| 9. SwiftUI 実装＋ビルド検証 | ios-developer | swiftui-implementation, storekit-monetization | `App/`, `AppTests/`, `build.json` |
+| 10. 日英ローカライズ | ios-developer | localization | `*.xcstrings` |
+| 11. 単体・UI 試験 | qa-engineer | ios-testing | `AppUITests/`, `tests.json` |
+| 12. ストア用スクリーンショット | product-designer | store-screenshots | `factory/screenshots/**` |
+| 13. App Store Connect 設定 | release-manager | asc-sync | `factory/asc/plan.json`, ledger |
+| 14. TestFlight | release-manager | testflight-release | `testflight.json` |
+| 15. リリース準備確認 | release-manager | testflight-release | `readiness.json` |
+| 16. 審査提出（**人間承認**） | release-manager | release-approval | `submission.json` |
+| 17. 公開（**人間承認**） | release-manager | release-approval | `release.json` |
 
 全体の制御は **Orchestrator Skill**（`/ios-app-factory:factory`）がメイン会話で行います（Subagent は Subagent を起動できないため）。
 
@@ -63,7 +65,7 @@
 .claude-plugin/marketplace.json        # このリポジトリ = マーケットプレイス
 plugins/ios-app-factory/
 ├── .claude-plugin/plugin.json          # プラグインマニフェスト
-├── skills/                             # 16 Skills（オーケストレーター + 専門領域）
+├── skills/                             # 18 Skills（オーケストレーター + 専門領域）
 ├── agents/                             # 6 Subagents（調査/PM/デザイン/開発/QA/リリース）
 ├── hooks/hooks.json, run_hook.py       # PreToolUse(Bash, Write/Edit) + SessionStart
 ├── bin/app-factory                     # ワークフロー CLI（プラグイン有効時は PATH 上）
@@ -79,7 +81,7 @@ plugins/ios-app-factory/
 ├── scripts/xcode/*.sh                  # OS 依存操作（xcodegen/xcodebuild/simctl/fastlane）
 ├── templates/ios-app/                  # SwiftUI + SwiftData + StoreKit 2 アプリ雛形（XcodeGen）
 ├── examples/sample-app/                # 成果物の形式例（テスト用フィクスチャ）
-└── tests/                              # pytest（99 件）
+└── tests/                              # pytest（115 件）
 docs/ARCHITECTURE.md                    # 設計書
 ```
 
@@ -141,8 +143,23 @@ export ASC_PRIVATE_KEY_PATH=$HOME/.appstoreconnect/AuthKey_XXXXXXXXXX.p8
 ### 2. アプリレコード
 App Store Connect の「マイ App」で、`factory/config.json` と同じ Bundle ID のアプリを 1 度だけ作成します（API ではアプリを新規作成できません）。
 
-### 3. URL
-`factory/config.json` の `app.links.support` / `app.links.privacy_policy` に実在のページを設定します。アプリ内リンク（`AppLinks.swift`）と ASC メタデータの両方に使われ、ASO ゲートで一致を確認します。
+### 3. サポート URL・プライバシーポリシー URL
+
+**指定しない場合（既定）**: `support_page` 工程が、サポートとプライバシーポリシーを 1 つにまとめた日英のページを生成・公開し、その URL を `app.links.support` と `app.links.privacy_policy` の**両方**に設定します。
+
+```bash
+export FACTORY_SUPPORT_EMAIL=support@example.com          # 必須: ページに埋め込むサポート用メールアドレス
+export FACTORY_NOTION_PARENT_PAGE=https://www.notion.so/... # 任意: 「Web で公開」済みの親ページ
+```
+
+- メールアドレスは環境変数からのみ読み込みます。リポジトリに保存されるのは `{{SUPPORT_EMAIL}}` を含む下書き（`factory/artifacts/support_page/page.md`）だけです。アドレスを埋め込んだ版は `.factory-tmp/`（Git 対象外）に作られます。
+- **Notion MCP が接続されている場合**: Claude が Notion にページを作成し（再実行時は同じページを更新）、公開 URL を記録します。Notion の API と MCP には「Web で公開」を切り替える操作がないため、**公開済みの親ページの下に作る**のが確実です（子ページは公開設定を引き継ぎます）。公開されていない場合は、Notion で「共有 → Web で公開」を有効にするよう案内されます。
+- **Notion MCP が接続されていない場合**: 完成したページの文面が表示されます。好きな場所（Notion、GitHub Pages、自分のサイトなど）で公開し、URL を伝えてください。Claude が `app-factory support-page record --url <URL> --provider manual` を実行します。
+- 記録時に URL が HTTP 200 を返すか確認します。ページを編集した場合は、再公開して記録し直さないとゲートを通りません。
+
+**自分のページを使う場合**: `factory/config.json` の `app.links.support` / `app.links.privacy_policy` を設定しておくと、ページは生成されず（`support-page use-existing`）、その URL が使われます。
+
+どちらの場合も、同じ URL がアプリ内リンク（`AppLinks.swift`: 設定画面と課金画面）と ASC メタデータに使われ、ASO ゲートで一致を確認します。
 
 ## 実行方法
 
@@ -167,6 +184,7 @@ App Store Connect の「マイ App」で、`factory/config.json` と同じ Bundl
 
 ### 人間の作業が必要な地点（自動では越えません）
 - 調査結果が **NO-GO** のとき（方向転換するか判断）
+- `FACTORY_SUPPORT_EMAIL` の設定。Notion MCP が無い場合は、サポート/プライバシーページの公開と URL の連絡
 - 課金なしで出す場合の **waiver**（MVP では課金が原則必須）
 - macOS でのビルド・試験・撮影（Linux 環境では手前で停止）
 - `asc.mode` を `apply` にする判断と API キーの用意
@@ -182,6 +200,8 @@ app-factory gate <stage> --owner <id>          # 0=合格, 2=不合格
 app-factory invalidate <stage> --reason "..."  # 仕様変更 → 依存工程を stale に
 app-factory validate <file> --schema <name>
 app-factory codegen                             # DesignTokens / ProductCatalog / Products.storekit / AppLinks
+app-factory support-page status|draft|render|record --url URL [--provider notion|manual]|use-existing
+app-factory icon render | icon preview           # アイコン一式の生成 / 60・120・180px のプレビュー
 app-factory screenshots render
 app-factory asc plan [--fixture f.json] | asc apply [--simulate]
 app-factory testflight verify [--simulate]
@@ -201,8 +221,10 @@ macOS 用スクリプト: `scripts/xcode/build.sh`, `test.sh`, `capture_screensh
 | proposal | 差別化 ≥2 件に出典、must 機能 1–7、無料モデル不可 |
 | charter | 原則 3–7（検証方法付き）、非目標 ≥2、日本語トーンが日本語 |
 | mvp | 機能→原則のトレース、受入基準、画面定義、**課金必須**（無い場合は人間の waiver）、買い切り以外は理由必須、Product ID 接頭辞、IAP 名 ≤30・説明 ≤45、無料枠に価値、スクショシーン 3–10 |
+| support_page | 英日の Support / Privacy Policy 見出し、メールはプレースホルダーのみ（直書き禁止）、課金・復元・収集データ種別の記載、公開内容=現行の下書き、公開 https URL が HTTP 200、support と privacy の両リンクが同じ公開 URL |
+| app_icon | Schema（文字レイヤーなし）、憲章の原則・デザインコンセプト・ストア名との対応、ASO キーワードの反映、HIG の参照、デザインパレットの色のみ、主モチーフのコントラスト ≥3:1（ライト/ダーク）、レイヤー ≤12、64px での占有率 12–75%、生成物が最新、1024px RGB アルファなし |
 | design | WCAG コントラスト（本文 4.5:1、UI 3:1、ライト/ダーク）、定番 AI 配色との ΔE ≥12、Apple HIG と Design Skill の参照記録、キャプションのコントラスト |
-| implementation | 必須ファイル、生成コード最新、TODO/プレースホルダーなし、SwiftData、StoreKit 2（`Transaction.updates`/`currentEntitlements`/`AppStore.sync`/`finish`）、画面ごとの View、iOS 17+、version/build 一致、App Icon 1024px アルファなし、単体テスト ≥5、**現行ソースでのビルド成功** |
+| implementation | 必須ファイル、生成コード最新、TODO/プレースホルダーなし、SwiftData、StoreKit 2（`Transaction.updates`/`currentEntitlements`/`AppStore.sync`/`finish`）、画面ごとの View、iOS 17+、version/build 一致、アイコンあり、単体テスト ≥5、**現行ソースでのビルド成功** |
 | localization | sourceLanguage en、全キー ja 翻訳済み、空値なし、書式指定子一致、コード中の文字列が全てカタログにある、InfoPlist 表示名、CFBundleLocalizations |
 | testing | 失敗 0、単体 ≥5・UI ≥2、課金系テスト合格、en と ja で実行、現行ソースと一致、全シーンの ScreenshotTests |
 | aso | 名前/サブタイトル ≤30、キーワード ≤100・形式・重複、プロモ ≤170、説明 300–4000、日本語、キャプション長、価格表記なし、URL 一致、競合名と非重複 |
@@ -219,6 +241,8 @@ macOS 用スクリプト: `scripts/xcode/build.sh`, `test.sh`, `capture_screensh
 | `factory/config.json` | 設定 | ✔ |
 | `factory/idea.md` | 入力アイデア | ✔ |
 | `factory/artifacts/<stage>/*` | 工程成果物（JSON + Markdown） | ✔ |
+| `factory/artifacts/support_page/page.md`, `publication.json` | サポート/プライバシーページの下書き（メールはプレースホルダー）と公開記録 | ✔ |
+| `App/Resources/Assets.xcassets/AppIcon.appiconset/*` | `icon.json` から生成したアイコン（ライト/ダーク/ティント） | ✔ |
 | `factory/gates/<stage>.json` | ゲート結果（チェック一覧・入出力ダイジェスト） | ✔ |
 | `factory/state.json`, `history.jsonl` | 実行状態・イベント履歴 | ✔ |
 | `factory/reports/*.json` | build / tests / testflight / purchase-test / submission / release | ✔ |
@@ -276,7 +300,7 @@ API で設定できないため人間が行うもの: App のプライバシー�
 | `app.version`, `build_number` | `1.0.0`, `1` | `project.yml` と一致が必要（ゲートで確認） |
 | `app.locales` / `primary_locale` | `["en-US","ja"]` / `en-US` | 英語が既定、日本語は必須 |
 | `app.min_ios` | `17.0` | SwiftData のため 17 以上 |
-| `app.links.support` / `privacy_policy` / `terms` | null / null / Apple 標準 EULA | アプリ内リンクと ASC メタデータで共用 |
+| `app.links.support` / `privacy_policy` / `terms` | null / null / Apple 標準 EULA | 未指定なら `support_page` 工程が公開ページの URL を両方に設定。アプリ内リンクと ASC メタデータで共用 |
 | `research.min_competitors` / `min_sources` | 5 / 8 | 調査ゲートのしきい値 |
 | `asc.mode` | `dry-run` | `apply` で本番 ASC に書き込み |
 | `asc.app_id`, `price_base_territory`, `remote_fixture` | null, `USA`, null | |
@@ -286,7 +310,7 @@ API で設定できないため人間が行うもの: App のプライバシー�
 | `release.approval_ttl_hours` | 72 | 承認の有効期限 |
 | `locks.stale_after_minutes` | 30 | ロック失効（再開可能になるまで）の時間 |
 
-環境変数: `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY_PATH`（or `ASC_PRIVATE_KEY[_BASE64]`）, `FACTORY_SIMULATOR`（撮影・試験用シミュレーター名の上書き）, `FACTORY_APPROVER_KEY_PATH`, `FACTORY_REHEARSAL=1`（シミュレーター結果を受け入れる予行演習。本番 ASC には影響しません）, `FACTORY_DEBUG=1`（マスク済みのスタックトレース）。
+環境変数: `FACTORY_SUPPORT_EMAIL`（サポートページに載せるメールアドレス）, `FACTORY_NOTION_PARENT_PAGE`（任意: 公開済みの Notion 親ページ）, `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY_PATH`（or `ASC_PRIVATE_KEY[_BASE64]`）, `FACTORY_SIMULATOR`（撮影・試験用シミュレーター名の上書き）, `FACTORY_APPROVER_KEY_PATH`, `FACTORY_REHEARSAL=1`（シミュレーター結果を受け入れる予行演習。本番 ASC には影響しません）, `FACTORY_DEBUG=1`（マスク済みのスタックトレース）。
 
 ## Git に保存するもの・しないもの
 
@@ -297,11 +321,11 @@ API で設定できないため人間が行うもの: App のプライバシー�
 ```bash
 cd plugins/ios-app-factory
 python3 -m pip install -r requirements-dev.txt
-python3 -m pytest -q                        # 99 tests
+python3 -m pytest -q                        # 115 tests
 claude plugin validate --strict .           # マニフェスト・Skills・Agents・Hooks の検証
 ```
 
-`tests/test_e2e.py` は、1 つのアイデア（サンプル成果物）から全 15 工程を CLI 経由で通します。ASC シミュレーターへの適用・冪等性・承認なし提出の拒否・人間承認後の提出・Apple 承認待ちの公開拒否・公開まで含みます。ほかに、クラッシュ後の再開、セッション喪失からの引き継ぎ、同時実行の拒否、仕様変更の伝播、Hook のブロック、秘密情報のマスク、JWT のクレーム、スクリーンショットの再現性を検証しています。
+`tests/test_e2e.py` は、1 つのアイデア（サンプル成果物）から全 17 工程を CLI 経由で通します。ASC シミュレーターへの適用・冪等性・承認なし提出の拒否・人間承認後の提出・Apple 承認待ちの公開拒否・公開まで含みます。ほかに、クラッシュ後の再開、セッション喪失からの引き継ぎ、同時実行の拒否、仕様変更の伝播、Hook のブロック、秘密情報のマスク、JWT のクレーム、スクリーンショットの再現性を検証しています。
 
 ## トラブルシューティング
 
@@ -324,11 +348,18 @@ claude plugin validate --strict .           # マニフェスト・Skills・Agen
 | `approval requires an interactive terminal` | Claude Code の `!` やスクリプトからは承認できません。通常のターミナルで実行してください |
 | `approver key ... must not be group/world accessible` | `chmod 600 ~/.config/ios-app-factory/approver.key` |
 | Python の import エラー | `app-factory setup`（venv を作り依存をインストール） |
+| `set FACTORY_SUPPORT_EMAIL` | サポートページに載せるメールアドレスを環境変数に設定してから、`support-page render` を再実行 |
+| `publication.reachable` が不合格 | ページが非公開です。Notion で「共有 → Web で公開」を有効にする（または公開済みの親ページの下に移す）→ `support-page record` を再実行 |
+| `publication.current` が不合格 | `page.md` を編集した後、再公開していません。render → 公開 → record をやり直してください |
+| Notion にページが重複した | `publication.json` の `notion_page_id` があれば、再実行時はそのページを更新します。重複したページは Notion 上で削除してください |
+| `legibility.coverage` / `glyph.contrast` が不合格 | アイコンのモチーフが小さすぎる・大きすぎる・薄すぎます。`app-factory icon preview` で 60px 表示を見て `icon.json` を調整 |
+| `palette.from-design` が不合格 | デザインパレット外の色は、`extra_colors` に理由付きで追加するか、パレット内の色に変更 |
 | Hook に止められた | メッセージに正しい手順（`app-factory` コマンド）が表示されます。回避はしないでください |
 
 ## 検証状況と制約
 
-- この環境（Linux）で実行・検証したもの: Python エンジン、全ゲート、ASC の Plan・検証、シミュレーターへの適用・クラッシュ復旧・冪等性、承認と Hooks、スクリーンショット合成（Noto CJK）、全 99 テスト、`claude plugin validate --strict`。
+- この環境（Linux）で実行・検証したもの: Python エンジン、全ゲート、ASC の Plan・検証、シミュレーターへの適用・クラッシュ復旧・冪等性、承認と Hooks、スクリーンショット合成（Noto CJK）、アイコン描画、サポートページの生成と記録、全 115 テスト、`claude plugin validate --strict`。
+- Notion への実際の投稿は、MCP ツールを使う Claude の手順（Skill）として実装しています。Notion MCP を接続した環境での実投稿はまだ試していません（テストでは公開 URL の確認を代替しています）。
 - **macOS / Xcode が必要なため、ここでは実行できていないもの**: SwiftUI 雛形のコンパイル、XCTest/XCUITest の実行、シミュレーターでの撮影、Fastlane での TestFlight アップロード、実際の App Store Connect への書き込み。雛形の Swift コードと `scripts/xcode/*.sh` は、初回は Mac で `build.sh` → `test.sh` を流して確認してください（失敗はそれぞれのゲートで検出されます）。
 - App Store Connect API の仕様は Apple 公式ドキュメント（JWT ES256、`/v1`・`/v2` の JSON:API リソース、スクリーンショットの予約→アップロード→コミット、`reviewSubmissions`）に基づいています。ただし内蔵シミュレーターは Apple のサーバー側検証を再現しません。初回の本番適用前に、必ずライブ読み取りの dry-run（資格情報ありの `asc plan`）で差分を確認してください。
 - スクリーンショットの既定は 6.9 インチ iPhone（1320×2868、`APP_IPHONE_67`）です。iPad 対応アプリは `ipad_13` を追加してください。

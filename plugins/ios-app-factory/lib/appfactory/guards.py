@@ -42,13 +42,13 @@ ALWAYS_DENY = [
 PROTECTED_PATHS = re.compile(
     r"(factory/approvals/|factory/state\.json|factory/history\.jsonl|factory/gates/|factory/asc/ledger[\w.]*\.json|"
     r"factory/asc/sync-report\.json|factory/reports/(purchase-test|submission|release|testflight)\.json|"
-    r"factory/artifacts/release/readiness\.json|\.factory-tmp/locks)"
+    r"factory/artifacts/release/readiness\.json|factory/artifacts/support_page/publication\.json|\.factory-tmp/locks)"
 )
 MUTATING = re.compile(r"(>|\btee\b|\bcp\b|\bmv\b|\brm\b|\bsed\s+-i|\btouch\b|\bpython\d?\b|\bperl\b|\bchmod\b|\bln\b|\btruncate\b|\bdd\b|\bjq\b.*>)")
 GIT_TMP = re.compile(r"(\.factory-tmp|\.xcresult|DerivedData|\.p8$|(^|/)\.env|xcuserdata|\.ipa$)")
 
 MACHINE_OWNED = PROTECTED_PATHS
-GENERATED = re.compile(r"(App/Sources/Design/DesignTokens\.swift|App/Sources/Store/ProductCatalog\.swift|App/Resources/Products\.storekit|"
+GENERATED = re.compile(r"(App/Sources/Design/DesignTokens\.swift|App/Sources/Store/ProductCatalog\.swift|App/Resources/Products\.storekit|App/Resources/Assets\.xcassets/AppIcon\.appiconset/.*|"
                        r"factory/screenshots/(manifest\.json|final/.*)|factory/asc/plan\.json|factory/reports/(build|tests)\.json)$")
 
 
@@ -137,7 +137,7 @@ def guard_files(payload: dict) -> int:
         return _deny(f"{rel} is machine-owned (state, gates, approvals, ledger, evidence). Use `app-factory` commands.")
     if GENERATED.search(rel):
         return _deny(f"{rel} is generated. Edit the source artifact and run the generator "
-                     "(`app-factory codegen`, `screenshots render`, `asc plan`, or scripts/xcode/*.sh).")
+                     "(`app-factory codegen`, `icon render`, `screenshots render`, `asc plan`, or scripts/xcode/*.sh).")
     return 0
 
 

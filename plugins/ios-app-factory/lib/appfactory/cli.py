@@ -219,6 +219,44 @@ def cmd_screenshots(args):
         _out({d: DEVICES[d] for d in cfg["screenshots"]["devices"]})
 
 
+def cmd_icon(args):
+    from . import icon
+
+    project = _project(args)
+    if args.action == "render":
+        _out(icon.render(project))
+    else:
+        from .jsonio import read_json
+
+        path = icon.preview_sheet(project)
+        spec = read_json(project.artifact("app_icon", "icon.json"))
+        _out({"preview": project.rel(path), "coverage_64px": icon.foreground_coverage(spec, project.root)})
+
+
+def cmd_support_page(args):
+    from . import support_page as sp
+
+    project = _project(args)
+    if args.action == "status":
+        _out({"links_user_specified": sp.links_user_specified(project),
+              "email_env_set": bool(os.environ.get(sp.EMAIL_ENV)), "email_env": sp.EMAIL_ENV,
+              "page_drafted": project.artifact("support_page", sp.PAGE).exists()})
+    elif args.action == "draft":
+        if sp.links_user_specified(project) and not args.force:
+            raise SystemExit("config app.links already points to your own pages; use `support-page use-existing` "
+                             "(or --force to generate a page anyway)")
+        sp.draft(project)
+        _out({"page": project.rel(project.artifact("support_page", sp.PAGE))})
+    elif args.action == "render":
+        _out(sp.render(project))
+    elif args.action == "record":
+        if not args.url:
+            raise SystemExit("--url is required")
+        _out(sp.record(project, args.url, args.provider, verify=not args.no_verify, notion_page_id=args.notion_page_id))
+    elif args.action == "use-existing":
+        _out(sp.use_existing(project))
+
+
 def cmd_asc(args):
     from .release import sync
 
@@ -316,6 +354,9 @@ def cmd_doctor(args):
     from .asc.auth import credentials_present
 
     checks["env:asc_credentials"] = "present" if credentials_present() else "absent (dry-run only)"
+    checks["env:FACTORY_SUPPORT_EMAIL"] = "set" if os.environ.get("FACTORY_SUPPORT_EMAIL") else \
+        "missing (needed to publish the support/privacy page)"
+    checks["env:FACTORY_NOTION_PARENT_PAGE"] = "set" if os.environ.get("FACTORY_NOTION_PARENT_PAGE") else "unset (optional)"
     try:
         project = Project.find(Path(args.project) if args.project else None)
         checks["project"] = str(project.root)
@@ -420,6 +461,19 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--locale")
     s.add_argument("--device")
     s.set_defaults(fn=cmd_screenshots)
+
+    s = sub.add_parser("icon", help="render the app icon set from icon.json / preview at home-screen sizes")
+    s.add_argument("action", choices=["render", "preview"])
+    s.set_defaults(fn=cmd_icon)
+
+    s = sub.add_parser("support-page", help="combined support + privacy policy page (en/ja)")
+    s.add_argument("action", choices=["status", "draft", "render", "record", "use-existing"])
+    s.add_argument("--url", help="published public URL (record)")
+    s.add_argument("--provider", choices=["notion", "manual"], default="notion")
+    s.add_argument("--no-verify", action="store_true", help="skip the HTTP reachability check")
+    s.add_argument("--notion-page-id", help="Notion page id (so later runs update instead of duplicating)")
+    s.add_argument("--force", action="store_true")
+    s.set_defaults(fn=cmd_support_page)
 
     s = sub.add_parser("asc", help="App Store Connect sync (never submits)")
     s.add_argument("action", choices=["plan", "apply"])

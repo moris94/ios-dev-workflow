@@ -31,7 +31,8 @@ Output: `factory/artifacts/aso/aso.json` (schema `aso`).
   privacy stance; ja written natively in the charter's tone.
 - Captions: one per `mvp.screenshot_scenes` id — benefit-first headline (≤5 words en), optional subline.
   They will be composed onto screenshots, so they must be short and readable at thumbnail size.
-- URLs (`support_url`, `privacy_policy_url`, optional `marketing_url`) must be real https pages the human controls;
-  if unknown, ask the human in your final report and use the placeholders they provide.
+- URLs: `support_url` and `privacy_policy_url` must equal `config.app.links.support` / `privacy_policy`. By default
+  the `support_page` stage published one combined page and set both links to its URL, so both fields use that same URL.
+  `marketing_url` is optional.
 
 Finish with `app-factory gate aso --owner <owner>`.

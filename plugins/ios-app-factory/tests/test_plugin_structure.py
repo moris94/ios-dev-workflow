@@ -26,7 +26,7 @@ def test_every_stage_has_agent_skills_and_gate():
     agents = {p.stem: _frontmatter(p) for p in (PLUGIN / "agents").glob("*.md")}
     skills = {p.parent.name: _frontmatter(p) for p in (PLUGIN / "skills").glob("*/SKILL.md")}
     import appfactory.gates.planning, appfactory.gates.design, appfactory.gates.build  # noqa: F401
-    import appfactory.gates.l10n, appfactory.gates.screenshots, appfactory.gates.release  # noqa: F401
+    import appfactory.gates.l10n, appfactory.gates.screenshots, appfactory.gates.release, appfactory.gates.brand  # noqa: F401
     for stage in load().stages:
         assert stage.agent in agents, stage.id
         for s in stage.skills:
