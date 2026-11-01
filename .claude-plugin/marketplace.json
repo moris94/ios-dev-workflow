@@ -1,0 +1,14 @@
+{
+  "name": "ios-dev-workflow",
+  "owner": {
+    "name": "moris94"
+  },
+  "description": "iOS development workflow plugins for Claude Code: idea-to-App-Store factory with quality gates and human-approved release.",
+  "plugins": [
+    {
+      "name": "ios-app-factory",
+      "source": "./plugins/ios-app-factory",
+      "description": "Idea-to-App-Store pipeline for SwiftUI apps with quality gates, resumable state and human-approved release."
+    }
+  ]
+}

@@ -1,0 +1,320 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ios-app-factory/schemas/research.schema.json",
+  "title": "Market research",
+  "type": "object",
+  "required": [
+    "idea",
+    "generated_at",
+    "sources",
+    "competitors",
+    "demand_signals",
+    "user_pain_points",
+    "market_gaps",
+    "search_log",
+    "verdict"
+  ],
+  "properties": {
+    "idea": {
+      "type": "string",
+      "minLength": 1
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "url",
+          "title",
+          "retrieved_at",
+          "type"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^S[0-9]+$"
+          },
+          "url": {
+            "type": "string",
+            "pattern": "^https://"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "publisher": {
+            "type": "string"
+          },
+          "retrieved_at": {
+            "type": "string",
+            "format": "date"
+          },
+          "type": {
+            "enum": [
+              "app_store",
+              "review",
+              "article",
+              "forum",
+              "trend",
+              "official",
+              "statistics",
+              "other"
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "competitors": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "app_store_url",
+          "price_model",
+          "strengths",
+          "weaknesses",
+          "source_ids"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "app_store_url": {
+            "type": "string",
+            "pattern": "^https://"
+          },
+          "developer": {
+            "type": "string"
+          },
+          "price_model": {
+            "enum": [
+              "free",
+              "paid",
+              "freemium_iap",
+              "subscription",
+              "ads",
+              "unknown"
+            ]
+          },
+          "price_notes": {
+            "type": "string"
+          },
+          "rating": {
+            "type": [
+              "number",
+              "null"
+            ],
+            "minimum": 0,
+            "maximum": 5
+          },
+          "rating_count": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 0
+          },
+          "strengths": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1
+          },
+          "weaknesses": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1
+          },
+          "source_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^S[0-9]+$"
+            },
+            "minItems": 1
+          }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "demand_signals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "signal",
+          "evidence",
+          "strength",
+          "source_ids"
+        ],
+        "properties": {
+          "signal": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidence": {
+            "type": "string",
+            "minLength": 1
+          },
+          "strength": {
+            "enum": [
+              "weak",
+              "moderate",
+              "strong"
+            ]
+          },
+          "source_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^S[0-9]+$"
+            },
+            "minItems": 1
+          }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "user_pain_points": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "pain",
+          "source_ids"
+        ],
+        "properties": {
+          "pain": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^S[0-9]+$"
+            },
+            "minItems": 1
+          }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "market_gaps": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "gap",
+          "source_ids"
+        ],
+        "properties": {
+          "gap": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^S[0-9]+$"
+            },
+            "minItems": 1
+          }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "risks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "risk",
+          "mitigation"
+        ],
+        "properties": {
+          "risk": {
+            "type": "string",
+            "minLength": 1
+          },
+          "mitigation": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 0
+    },
+    "search_log": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "query",
+          "tool"
+        ],
+        "properties": {
+          "query": {
+            "type": "string",
+            "minLength": 1
+          },
+          "tool": {
+            "type": "string",
+            "minLength": 1
+          },
+          "at": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "verdict": {
+      "type": "object",
+      "required": [
+        "go",
+        "confidence",
+        "rationale"
+      ],
+      "properties": {
+        "go": {
+          "type": "boolean"
+        },
+        "confidence": {
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "rationale": {
+          "type": "string",
+          "minLength": 20
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

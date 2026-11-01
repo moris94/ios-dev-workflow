@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ios-app-factory/schemas/testflight_report.schema.json",
+  "title": "TestFlight report",
+  "type": "object",
+  "required": [
+    "version",
+    "build_number",
+    "build_id",
+    "processing_state",
+    "uploaded_at",
+    "source_digest"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "build_number": {
+      "type": [
+        "integer",
+        "string"
+      ]
+    },
+    "build_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "processing_state": {
+      "type": "string",
+      "minLength": 1
+    },
+    "uploaded_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_digest": {
+      "type": "string"
+    },
+    "beta_groups": {
+      "type": "array"
+    },
+    "dry_run": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": true
+}

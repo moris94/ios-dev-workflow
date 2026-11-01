@@ -1,0 +1,207 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ios-app-factory/schemas/aso.schema.json",
+  "title": "ASO metadata",
+  "type": "object",
+  "required": [
+    "locales",
+    "keyword_research"
+  ],
+  "properties": {
+    "locales": {
+      "type": "object",
+      "required": [
+        "en-US",
+        "ja"
+      ],
+      "properties": {
+        "en-US": {
+          "type": "object",
+          "required": [
+            "name",
+            "subtitle",
+            "keywords",
+            "promotional_text",
+            "description",
+            "support_url",
+            "privacy_policy_url",
+            "screenshot_captions"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 30
+            },
+            "subtitle": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 30
+            },
+            "keywords": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "promotional_text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 170
+            },
+            "description": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            },
+            "whats_new": {
+              "type": "string",
+              "maxLength": 4000
+            },
+            "support_url": {
+              "type": "string",
+              "pattern": "^https://"
+            },
+            "marketing_url": {
+              "type": "string",
+              "pattern": "^https://"
+            },
+            "privacy_policy_url": {
+              "type": "string",
+              "pattern": "^https://"
+            },
+            "screenshot_captions": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "required": [
+                  "headline"
+                ],
+                "properties": {
+                  "headline": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "subline": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "ja": {
+          "type": "object",
+          "required": [
+            "name",
+            "subtitle",
+            "keywords",
+            "promotional_text",
+            "description",
+            "support_url",
+            "privacy_policy_url",
+            "screenshot_captions"
+          ],
+          "properties": {
+            "name": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 30
+            },
+            "subtitle": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 30
+            },
+            "keywords": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "promotional_text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 170
+            },
+            "description": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 4000
+            },
+            "whats_new": {
+              "type": "string",
+              "maxLength": 4000
+            },
+            "support_url": {
+              "type": "string",
+              "pattern": "^https://"
+            },
+            "marketing_url": {
+              "type": "string",
+              "pattern": "^https://"
+            },
+            "privacy_policy_url": {
+              "type": "string",
+              "pattern": "^https://"
+            },
+            "screenshot_captions": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "required": [
+                  "headline"
+                ],
+                "properties": {
+                  "headline": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "subline": {
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "keyword_research": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "keyword",
+          "locale",
+          "rationale"
+        ],
+        "properties": {
+          "keyword": {
+            "type": "string",
+            "minLength": 1
+          },
+          "locale": {
+            "enum": [
+              "en-US",
+              "ja"
+            ]
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 1
+          },
+          "source_ids": {
+            "type": "array"
+          }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 4
+    }
+  },
+  "additionalProperties": false
+}

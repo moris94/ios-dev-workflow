@@ -1,0 +1,133 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ios-app-factory/schemas/test_report.schema.json",
+  "title": "Test report",
+  "type": "object",
+  "required": [
+    "status",
+    "source_digest",
+    "totals",
+    "suites",
+    "locales_tested",
+    "tests",
+    "finished_at"
+  ],
+  "properties": {
+    "status": {
+      "enum": [
+        "passed",
+        "failed"
+      ]
+    },
+    "source_digest": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "totals": {
+      "type": "object",
+      "required": [
+        "passed",
+        "failed",
+        "skipped"
+      ],
+      "properties": {
+        "passed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "failed": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "skipped": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "suites": {
+      "type": "object",
+      "required": [
+        "unit",
+        "ui"
+      ],
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "passed",
+          "failed"
+        ],
+        "properties": {
+          "passed": {
+            "type": "integer"
+          },
+          "failed": {
+            "type": "integer"
+          },
+          "skipped": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "locales_tested": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1
+    },
+    "tests": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "target",
+          "result"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "target": {
+            "type": "string",
+            "minLength": 1
+          },
+          "result": {
+            "enum": [
+              "passed",
+              "failed",
+              "skipped",
+              "expectedFailure"
+            ]
+          },
+          "locale": {
+            "type": "string"
+          }
+        },
+        "additionalProperties": true
+      },
+      "minItems": 0
+    },
+    "coverage": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "finished_at": {
+      "type": "string"
+    },
+    "xcode_version": {
+      "type": "string"
+    },
+    "destination": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,162 @@
+{
+  "version": "1.0.0",
+  "scope_summary": "Quick capture, browse/edit/delete, Pro unlock for unlimited notes.",
+  "features": [
+    {
+      "id": "F1",
+      "name": "Quick capture",
+      "description": "Add a note with title and text",
+      "priority": "must",
+      "principle_ids": [
+        "P1"
+      ],
+      "acceptance_criteria": [
+        "Add button opens editor with title focused",
+        "Save is disabled for empty titles"
+      ],
+      "screens": [
+        "home",
+        "editor"
+      ]
+    },
+    {
+      "id": "F2",
+      "name": "Browse & edit",
+      "description": "List newest first, pinned on top; edit and delete",
+      "priority": "must",
+      "principle_ids": [
+        "P1",
+        "P2"
+      ],
+      "acceptance_criteria": [
+        "List shows pinned notes first",
+        "Swipe deletes a note"
+      ],
+      "screens": [
+        "home",
+        "editor"
+      ]
+    },
+    {
+      "id": "F3",
+      "name": "Unlimited notes",
+      "description": "Free tier holds 10 notes; Pro is unlimited",
+      "priority": "must",
+      "principle_ids": [
+        "P3"
+      ],
+      "acceptance_criteria": [
+        "Adding an 11th note on free tier opens the paywall",
+        "After purchase, adding works"
+      ],
+      "screens": [
+        "paywall",
+        "settings"
+      ],
+      "requires_pro": true
+    }
+  ],
+  "screens": [
+    {
+      "id": "home",
+      "name": "Home",
+      "purpose": "List notes"
+    },
+    {
+      "id": "editor",
+      "name": "Editor",
+      "purpose": "Create/edit"
+    },
+    {
+      "id": "paywall",
+      "name": "Paywall",
+      "purpose": "Unlock Pro"
+    },
+    {
+      "id": "settings",
+      "name": "Settings",
+      "purpose": "Restore, links"
+    }
+  ],
+  "data_model": [
+    {
+      "entity": "Item",
+      "fields": [
+        {
+          "name": "title",
+          "type": "String"
+        },
+        {
+          "name": "note",
+          "type": "String"
+        },
+        {
+          "name": "createdAt",
+          "type": "Date"
+        },
+        {
+          "name": "isPinned",
+          "type": "Bool"
+        }
+      ]
+    }
+  ],
+  "monetization": {
+    "model": "non_consumable",
+    "products": [
+      {
+        "product_id": "com.example.stillnote.pro",
+        "reference_name": "Pro (one-time)",
+        "type": "NON_CONSUMABLE",
+        "price_usd": 4.99,
+        "family_sharable": false,
+        "review_note": "Unlocks unlimited notes. Tap + more than 10 times or Settings → Unlock Pro.",
+        "localizations": {
+          "en-US": {
+            "name": "Stillnote Pro",
+            "description": "Unlimited notes, forever."
+          },
+          "ja": {
+            "name": "Stillnote Pro",
+            "description": "メモを無制限に。買い切りです。"
+          }
+        },
+        "unlocks": [
+          "F3"
+        ]
+      }
+    ],
+    "free_tier": "Up to 10 notes with all core features",
+    "paywall_trigger": "Adding the 11th note, or Settings → Unlock Pro"
+  },
+  "screenshot_scenes": [
+    {
+      "id": "home",
+      "screen": "home",
+      "state": "seeded demo notes, one pinned",
+      "message": "All your ideas, calmly in one place"
+    },
+    {
+      "id": "editor",
+      "screen": "editor",
+      "state": "editing a seeded note",
+      "message": "Capture in two taps"
+    },
+    {
+      "id": "pro",
+      "screen": "paywall",
+      "state": "paywall with price",
+      "message": "Pay once, keep it forever"
+    }
+  ],
+  "out_of_scope": [
+    "iCloud sync",
+    "Widgets"
+  ],
+  "privacy": {
+    "collects_data": false,
+    "data_types": [],
+    "tracking": false
+  },
+  "category": "PRODUCTIVITY"
+}

@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ios-app-factory/schemas/charter.schema.json",
+  "title": "Product charter",
+  "type": "object",
+  "required": [
+    "mission",
+    "value_proposition",
+    "target_user",
+    "principles",
+    "non_goals",
+    "quality_bar",
+    "tone_of_voice",
+    "decision_rules"
+  ],
+  "properties": {
+    "mission": {
+      "type": "string",
+      "minLength": 10
+    },
+    "value_proposition": {
+      "type": "string",
+      "minLength": 10
+    },
+    "target_user": {
+      "type": "string",
+      "minLength": 1
+    },
+    "principles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "statement",
+          "rationale",
+          "check"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^P[0-9]+$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "statement": {
+            "type": "string",
+            "minLength": 1
+          },
+          "rationale": {
+            "type": "string",
+            "minLength": 1
+          },
+          "check": {
+            "type": "string",
+            "minLength": 10
+          }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 3,
+      "maxItems": 7
+    },
+    "non_goals": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 2
+    },
+    "quality_bar": {
+      "type": "object",
+      "required": [
+        "accessibility",
+        "performance",
+        "privacy"
+      ],
+      "properties": {
+        "accessibility": {
+          "type": "string",
+          "minLength": 1
+        },
+        "performance": {
+          "type": "string",
+          "minLength": 1
+        },
+        "privacy": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "tone_of_voice": {
+      "type": "object",
+      "required": [
+        "en-US",
+        "ja"
+      ],
+      "properties": {
+        "en-US": {
+          "type": "string",
+          "minLength": 1
+        },
+        "ja": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "decision_rules": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1
+    }
+  },
+  "additionalProperties": false
+}

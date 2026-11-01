@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ios-app-factory/schemas/asc_plan.schema.json",
+  "title": "App Store Connect change plan",
+  "type": "object",
+  "required": [
+    "generated_at",
+    "mode",
+    "remote_snapshot",
+    "desired_digest",
+    "operations"
+  ],
+  "properties": {
+    "generated_at": {
+      "type": "string",
+      "minLength": 1
+    },
+    "mode": {
+      "enum": [
+        "dry-run",
+        "apply"
+      ]
+    },
+    "remote_snapshot": {
+      "enum": [
+        "live",
+        "fixture",
+        "empty"
+      ]
+    },
+    "desired_digest": {
+      "type": "string"
+    },
+    "app": {
+      "type": "object"
+    },
+    "operations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "key",
+          "kind",
+          "method",
+          "path",
+          "description"
+        ],
+        "properties": {
+          "key": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{24}$"
+          },
+          "kind": {
+            "type": "string",
+            "minLength": 1
+          },
+          "method": {
+            "enum": [
+              "GET",
+              "POST",
+              "PATCH",
+              "DELETE",
+              "PUT",
+              "UPLOAD"
+            ]
+          },
+          "path": {
+            "type": "string",
+            "pattern": "^/v[12]/"
+          },
+          "body": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "depends_on": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "produces": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "upload": {
+            "type": [
+              "object",
+              "null"
+            ]
+          },
+          "lookup": {
+            "type": [
+              "object",
+              "null"
+            ]
+          }
+        },
+        "additionalProperties": true
+      },
+      "minItems": 0
+    },
+    "warnings": {
+      "type": "array"
+    }
+  },
+  "additionalProperties": true
+}
