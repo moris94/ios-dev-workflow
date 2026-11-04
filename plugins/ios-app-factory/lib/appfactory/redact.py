@@ -8,8 +8,7 @@ import re
 from typing import Iterable
 
 SECRET_ENV_NAMES = (
-    "ASC_PRIVATE_KEY",
-    "ASC_PRIVATE_KEY_BASE64",
+    "ASC_KEY_CONTENT_BASE64",
     "ASC_KEY_ID",
     "ASC_ISSUER_ID",
     "FASTLANE_PASSWORD",

@@ -9,7 +9,7 @@ user-invocable: false
 ## testflight
 1. Make sure `config.app.build_number` is higher than any uploaded build (bump it in `factory/config.json`
    and `project.yml` together; this re-opens dependent stages, which is intended).
-2. `"${CLAUDE_PLUGIN_ROOT}/scripts/xcode/testflight_upload.sh"` — runs `bundle exec fastlane beta`
+2. `app-factory xcode testflight` — runs `bundle exec fastlane beta`
    (`build_app` + `upload_to_testflight` with `skip_submission: true`, internal testers only,
    `app_store_connect_api_key` from env). It never distributes externally or submits.
 3. `app-factory testflight verify` — waits for the build in App Store Connect and writes

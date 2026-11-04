@@ -17,7 +17,7 @@ trusted design skills (Anthropic's frontend-design if installed) and record how 
 Design stage: write `factory/artifacts/design/design.json` + `design.md`, then run `app-factory codegen`.
 App icon stage: write `factory/artifacts/app_icon/icon.json` + `icon.md`, run `app-factory icon render` and
 `app-factory icon preview`, look at the preview yourself and iterate until the motif reads at 60px.
-Screenshots stage: capture (`${CLAUDE_PLUGIN_ROOT}/scripts/xcode/capture_screenshots.sh`, macOS), render
+Screenshots stage: capture (`app-factory xcode capture`, macOS), render
 (`app-factory screenshots render`), then look at the results yourself (Read the PNGs) and iterate on the design
 `screenshot_style` or ask for caption changes if the composition does not work.
 

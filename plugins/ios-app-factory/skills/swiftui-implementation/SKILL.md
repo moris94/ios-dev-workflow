@@ -43,7 +43,7 @@ AppUITests/                      XCUITest + ScreenshotTests (owned by qa / testi
    (Japanese sample content when the app runs in `ja`). Screenshots must look real, not lorem ipsum.
 7. Unit tests in `AppTests/` for each must-feature acceptance criterion that is testable without UI, and for
    entitlement logic (≥5 tests; the gate counts them). Use in-memory `ModelConfiguration(isStoredInMemoryOnly: true)`.
-8. Build: `"${CLAUDE_PLUGIN_ROOT}/scripts/xcode/build.sh"` (runs xcodegen + xcodebuild, writes
+8. Build: `app-factory xcode build` (runs xcodegen + xcodebuild, writes
    `factory/reports/build.json` with the source digest). Fix every error; keep warnings near zero.
 
 Gate (`app-factory gate implementation`): required files, generated files current, no TODO/FIXME/placeholder,
@@ -51,4 +51,4 @@ SwiftData @Model + container, StoreKit 2 (`Transaction.updates`, `currentEntitle
 one `<Screen>View` per MVP screen, iOS 17+, ≥5 unit tests, successful build of the *current* sources.
 
 On Linux/without Xcode the build cannot run: finish code + tests, then stop and report that
-`scripts/xcode/build.sh` must be run on a Mac (the gate will stay failed until then).
+`app-factory xcode build` must be run on a Mac (the gate will stay failed until then).

@@ -6,8 +6,9 @@ user-invocable: false
 
 # App Store Connect sync (stage `asc_sync`)
 
-Credentials (environment only, never printed): `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY_PATH`
-(or `ASC_PRIVATE_KEY` / `ASC_PRIVATE_KEY_BASE64`). JWT ES256, `aud=appstoreconnect-v1`, ≤20 min lifetime.
+Credentials (environment only, never printed, never referenced in your commands): `ASC_KEY_ID`, `ASC_ISSUER_ID`,
+`ASC_KEY_CONTENT_BASE64` (base64 of the AuthKey .p8). JWT ES256, `aud=appstoreconnect-v1`, ≤20 min lifetime.
+Check presence with `app-factory doctor` only.
 Prerequisite: the app record exists in App Store Connect (the API cannot create apps) with the bundle id from config.
 
 ## Commands

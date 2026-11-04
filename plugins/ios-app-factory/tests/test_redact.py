@@ -16,8 +16,14 @@ def test_private_key_and_jwt_patterns():
     assert "MIGTAg" not in out and "eyJhbGci" not in out
 
 
+def test_asc_key_content_redacted(monkeypatch):
+    monkeypatch.setenv("ASC_KEY_CONTENT_BASE64", "LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0t")
+    monkeypatch.setenv("ASC_KEY_ID", "ABCD123456")
+    out = redact("key=LS0tLS1CRUdJTiBQUklWQVRFIEtFWS0tLS0t kid=ABCD123456")
+    assert "LS0tLS1C" not in out and "ABCD123456" not in out
+
+
 def test_log_file_never_contains_secret(monkeypatch, tmp_path):
-    monkeypatch.setenv("ASC_PRIVATE_KEY", "-----BEGIN PRIVATE KEY-----\nSECRETSECRET\n-----END PRIVATE KEY-----")
     log_file = tmp_path / "f.log"
     logutil.set_log_file(log_file)
     try:
@@ -28,5 +34,5 @@ def test_log_file_never_contains_secret(monkeypatch, tmp_path):
 
 
 def test_paths_are_not_treated_as_secrets(monkeypatch):
-    monkeypatch.setenv("ASC_PRIVATE_KEY_PATH", "/Users/me/keys/AuthKey_X.p8")
+    monkeypatch.setenv("SOME_KEY_PATH", "/Users/me/keys/AuthKey_X.p8")
     assert "/Users/me/keys" in redact("loading /Users/me/keys/AuthKey_X.p8")

@@ -19,7 +19,7 @@ Rules:
 - Colours/fonts/spacing only through generated `DesignTokens`; product ids only through generated `ProductCatalog`.
   Regenerate with `app-factory codegen`; never edit generated files.
 - All UI strings localizable with English source text; accessibility identifiers for testable elements.
-- Build with `${CLAUDE_PLUGIN_ROOT}/scripts/xcode/build.sh`; the gate requires a successful build of the current sources.
+- Build with `app-factory xcode build`; the gate requires a successful build of the current sources.
   If Xcode is unavailable (non-macOS), finish the code and report that the build must run on a Mac.
 - Do not touch `AppUITests/` (QA owns it) except to add accessibility identifiers in app code that tests need.
 

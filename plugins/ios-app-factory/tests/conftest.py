@@ -22,8 +22,8 @@ LINKS = {"support": HELP_URL,
 
 @pytest.fixture(autouse=True)
 def _isolated_env(monkeypatch, tmp_path):
-    for k in ("CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "ASC_KEY_ID", "ASC_ISSUER_ID", "ASC_PRIVATE_KEY_PATH",
-              "ASC_PRIVATE_KEY", "ASC_PRIVATE_KEY_BASE64", "APP_FACTORY_PROJECT", "FACTORY_REHEARSAL", "CLAUDE_PROJECT_DIR",
+    for k in ("CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "ASC_KEY_ID", "ASC_ISSUER_ID", "ASC_KEY_CONTENT_BASE64",
+              "APP_FACTORY_PROJECT", "FACTORY_REHEARSAL", "CLAUDE_PROJECT_DIR",
               "FACTORY_SUPPORT_EMAIL"):
         monkeypatch.delenv(k, raising=False)
     monkeypatch.setenv("FACTORY_APPROVER_KEY_PATH", str(tmp_path / "approver-home" / "approver.key"))

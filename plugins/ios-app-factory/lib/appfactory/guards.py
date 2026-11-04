@@ -35,8 +35,11 @@ ALWAYS_DENY = [
     (re.compile(r"approver\.key"), "The approver key is private to the human approver."),
     (re.compile(r"(\bcat|\bless|\bmore|\bhead|\btail|\bbase64|\bxxd|\bod|\bstrings|\bcp|\bscp|\bcurl)\b[^|;&]*\.p8\b"),
      "Reading or copying App Store Connect private keys is not allowed."),
-    (re.compile(r"(echo|printf|print)[^|;&]*\$\{?(ASC_PRIVATE_KEY|ASC_PRIVATE_KEY_BASE64|FASTLANE_PASSWORD|MATCH_PASSWORD|APP_STORE_CONNECT_API_KEY_CONTENT)\b"),
+    (re.compile(r"(echo|printf|print)[^|;&]*\$\{?(ASC_KEY_CONTENT_BASE64|FASTLANE_PASSWORD|MATCH_PASSWORD|APP_STORE_CONNECT_API_KEY_CONTENT)\b"),
      "Printing secrets is not allowed."),
+    (re.compile(r"\$\{?ASC_KEY_CONTENT_BASE64\b|\bASC_KEY_CONTENT_BASE64="),
+     "The App Store Connect key (ASC_KEY_CONTENT_BASE64) is read only by app-factory and the bundled scripts; "
+     "don't reference, decode or set it in commands."),
     (re.compile(r"^\s*(printenv|env|set|export\s+-p|declare\s+-x)\s*($|\|)"), "Dumping the environment would expose secrets."),
 ]
 PROTECTED_PATHS = re.compile(

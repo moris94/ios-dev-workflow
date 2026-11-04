@@ -13,7 +13,7 @@ Outputs: `factory/screenshots/raw/<locale>/<device>/<scene>.png`, `factory/scree
 
 ## 1. Capture real screens (macOS)
 ```
-"${CLAUDE_PLUGIN_ROOT}/scripts/xcode/capture_screenshots.sh"
+app-factory xcode capture
 ```
 For each locale (en-US → `-testLanguage en -testRegion US`, ja → `ja`/`JP`) and device, the script boots the
 simulator, overrides the status bar (9:41, full battery/signal), runs only `AppUITests/ScreenshotTests`, exports

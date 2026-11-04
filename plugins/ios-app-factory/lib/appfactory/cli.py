@@ -42,6 +42,10 @@ def cmd_init(args):
     if not idea:
         raise SystemExit("--idea or --idea-file is required")
     result = init(root, idea, args.name, args.bundle_id, args.team_id, force=args.force)
+    if not args.no_permissions:
+        from . import permissions
+
+        result["permissions"] = permissions.install(root, args.notion_server or ["Notion"])["settings"]
     if args.scaffold:
         result["scaffolded"] = scaffold(Project(root), force=False)
     from .engine import Engine
@@ -193,10 +197,23 @@ def cmd_report(args):
     if args.kind == "build":
         _out(write_build_report(project, args.status, args.scheme, args.configuration, args.destination, args.started_at,
                                 log=args.log or "", xcode_version=args.xcode_version or "", warnings=args.warnings, errors=args.errors))
+    elif args.kind == "rerun-plan":
+        from .reports import rerun_plan
+
+        plan = rerun_plan(project, args.reason)
+        if args.locale:  # one -only-testing argument per line, for test.sh
+            print("\n".join(f"-only-testing:{i}" for i in plan.get(args.locale, [])))
+        else:
+            _out(plan)
     else:
-        per_locale = dict(item.split("=", 1) for item in args.results)
-        rep = write_test_report(project, {k: Path(v) for k, v in per_locale.items()}, args.destination or "", args.xcode_version or "")
-        _out({k: rep[k] for k in ("status", "totals", "suites", "locales_tested")})
+        from .reports import write_rerun_report
+
+        per_locale = {k: Path(v) for k, v in (item.split("=", 1) for item in args.results)}
+        if args.rerun:
+            rep = write_rerun_report(project, per_locale, args.reason, args.note or "")
+        else:
+            rep = write_test_report(project, per_locale, args.destination or "", args.xcode_version or "")
+        _out({k: rep[k] for k in ("status", "totals", "suites", "locales_tested", "flaky")})
         return 0 if rep["status"] == "passed" else 2
 
 
@@ -217,6 +234,33 @@ def cmd_screenshots(args):
 
         cfg = project.config()
         _out({d: DEVICES[d] for d in cfg["screenshots"]["devices"]})
+
+
+def cmd_permissions(args):
+    from . import permissions
+
+    project = _project(args)
+    servers = args.notion_server or ["Notion"]
+    if args.action == "install":
+        _out(permissions.install(project.root, servers, local=args.local))
+    elif args.action == "remove":
+        _out(permissions.remove(project.root, servers, local=args.local))
+    else:
+        _out(permissions.describe(servers))
+
+
+XCODE_SCRIPTS = {"build": "build.sh", "test": "test.sh", "capture": "capture_screenshots.sh",
+                 "testflight": "testflight_upload.sh"}
+
+
+def cmd_xcode(args):
+    """Run the macOS scripts (so one permission rule, `Bash(app-factory *)`, covers them)."""
+    from .project import PLUGIN_ROOT
+
+    project = _project(args)
+    script = PLUGIN_ROOT / "scripts" / "xcode" / XCODE_SCRIPTS[args.action]
+    env = dict(os.environ, APP_FACTORY_PROJECT=str(project.root))
+    return subprocess.call(["bash", str(script), *args.script_args], cwd=project.root, env=env)
 
 
 def cmd_icon(args):
@@ -353,7 +397,10 @@ def cmd_doctor(args):
         checks[f"tool:{tool}"] = "ok" if shutil.which(tool) else "missing"
     from .asc.auth import credentials_present
 
-    checks["env:asc_credentials"] = "present" if credentials_present() else "absent (dry-run only)"
+    from .asc.auth import missing_env
+
+    checks["env:asc_credentials"] = "present" if credentials_present() else \
+        "absent (dry-run only): missing " + ", ".join(missing_env())
     checks["env:FACTORY_SUPPORT_EMAIL"] = "set" if os.environ.get("FACTORY_SUPPORT_EMAIL") else \
         "missing (needed to publish the support/privacy page)"
     checks["env:FACTORY_NOTION_PARENT_PAGE"] = "set" if os.environ.get("FACTORY_NOTION_PARENT_PAGE") else "unset (optional)"
@@ -397,7 +444,21 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--team-id")
     s.add_argument("--scaffold", action="store_true", help="also render the SwiftUI app template")
     s.add_argument("--force", action="store_true")
+    s.add_argument("--no-permissions", action="store_true",
+                   help="don't pre-approve the representative use cases in .claude/settings.json")
+    s.add_argument("--notion-server", action="append", help="Notion MCP server name for permission rules (default: Notion)")
     s.set_defaults(fn=cmd_init)
+
+    s = sub.add_parser("permissions", help="pre-approve the representative use cases in .claude/settings.json")
+    s.add_argument("action", choices=["show", "install", "remove"])
+    s.add_argument("--local", action="store_true", help="write .claude/settings.local.json (personal, not committed)")
+    s.add_argument("--notion-server", action="append", help="Notion MCP server name (default: Notion)")
+    s.set_defaults(fn=cmd_permissions)
+
+    s = sub.add_parser("xcode", help="macOS: build | test | capture | testflight (runs scripts/xcode/*.sh)")
+    s.add_argument("action", choices=sorted(XCODE_SCRIPTS))
+    s.add_argument("script_args", nargs=argparse.REMAINDER)
+    s.set_defaults(fn=cmd_xcode)
 
     s = sub.add_parser("scaffold", help="render the SwiftUI/SwiftData/StoreKit 2 template")
     s.add_argument("--force", action="store_true")
@@ -453,6 +514,12 @@ def build_parser() -> argparse.ArgumentParser:
     t.add_argument("results", nargs="+", help="LOCALE=path/to/test-results.json")
     t.add_argument("--destination")
     t.add_argument("--xcode-version")
+    t.add_argument("--rerun", action="store_true", help="merge a partial re-run of failed cases into the last report")
+    t.add_argument("--reason", choices=["environment", "test-defect"])
+    t.add_argument("--note", help="why the failure was environmental / a test defect (required with --rerun)")
+    rp = rs.add_parser("rerun-plan", help="tests a partial re-run must execute")
+    rp.add_argument("--reason", required=True, choices=["environment", "test-defect"])
+    rp.add_argument("--locale")
     s.set_defaults(fn=cmd_report)
 
     s = sub.add_parser("screenshots")

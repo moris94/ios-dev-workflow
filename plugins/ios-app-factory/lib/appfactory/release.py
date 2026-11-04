@@ -276,5 +276,5 @@ def simulate_apple_approval(project: Project) -> None:
 
 def env_summary() -> dict:
     return {"asc_credentials": auth.credentials_present(),
-            "asc_key_path_set": bool(os.environ.get("ASC_PRIVATE_KEY_PATH")),
+            "asc_missing_env": auth.missing_env(),
             "approver_key_exists": approval.key_path().exists()}

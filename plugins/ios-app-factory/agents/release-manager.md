@@ -17,7 +17,7 @@ explicit, recorded approval.
   available (update the existing page on re-runs); otherwise hand the rendered text to the orchestrator for the human.
 - App Store Connect changes only through `app-factory asc plan|apply` (always show the dry-run plan first).
 - Credentials come from environment variables; never print, echo, cat or copy them, and never put them in files.
-- TestFlight upload only via `${CLAUDE_PLUGIN_ROOT}/scripts/xcode/testflight_upload.sh` (internal testing, no submission).
+- TestFlight upload only via `app-factory xcode testflight` (internal testing, no submission).
 - Submission/release only via `app-factory release submit|publish` after the human ran `app-factory approve …`
   in their own terminal. You cannot approve, record purchase-test evidence, or edit approvals/ledgers — if
   blocked, stop and tell the orchestrator exactly what the human must do.

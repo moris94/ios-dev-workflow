@@ -121,12 +121,20 @@ research → proposal → charter → mvp → design → support_page → aso �
 
 ## 8. 機密情報とログ
 
-- 資格情報は環境変数からだけ読む（`ASC_*`）。値をファイルに書かない。
+- 資格情報は環境変数からだけ読む（`ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_CONTENT_BASE64`）。JWT はメモリ上で署名する。例外は `xcodebuild -authenticationKeyPath` 用の一時ファイルで、`.factory-tmp/asc-key/`（0600）に書き出し、スクリプト終了時に trap で削除する。
 - 出力はすべて `redact()` を通す。マスク対象は、秘密らしい名前の環境変数の値（`*_PATH` は除く）、PEM 秘密鍵、JWT、`Authorization: Bearer` の値。
 - 詳細ログは `.factory-tmp/logs/`（gitignore）だけに書く。fastlane のログもここに置き、失敗時の抜粋もマスクしてから表示する。
 - Hook が `.p8` の読み出し、秘密環境変数の echo、`printenv`/`env` を止める。
 
-## 9. テスト戦略
+## 9. 試験の部分再実行
+
+`tests.json` は `runs`（最初は全件実行、その後に部分再実行）を持ち、同じテスト ID とロケールについては最新の結果で統合する。部分再実行を許すのは、原因が `environment`（ソース無変更）か `test-defect`（アプリのダイジェスト＝`project.yml`＋`App/**` が全件実行時と同一で、変わったのはテストコードだけ）の場合に限る。`test-defect` では、変更されたテストクラスの全テストを両ロケールで再実行させる。回数の上限、原因のメモ、失敗ケースの網羅は、レポート作成時とゲートの両方で検証する。再実行でだけ通ったテストは flaky として警告にする。
+
+## 10. 権限の事前承認
+
+プラグインは許可ルールを同梱できないため、`init`（または `permissions install`）がアプリのリポジトリの `.claude/settings.json` に代表ユースケースの allow ルールと、承認・証跡コマンドの deny ルールをマージする。Skill は CLI を常に `app-factory …`（PATH 上の名前）で呼び、`Bash(app-factory *)` の 1 ルールで照合できるようにしている。macOS の手順も `app-factory xcode …` 経由にしている。PreToolUse Hook は許可ルールより先に評価されるため、安全上のブロックは事前承認後も変わらない。
+
+## 11. テスト戦略
 
 - 単体: engine / gates / l10n / codegen / screenshots / asc（planner, executor, ledger, JWT）/ approval / guards / redact
 - 統合: `test_e2e.py` が CLI で全 17 工程を通す（macOS 専用の手順はレポートを書くヘルパーで代替し、ASC は内蔵シミュレーターを使う）

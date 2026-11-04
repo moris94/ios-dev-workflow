@@ -125,14 +125,23 @@ def test_validate_plan_rejects_forbidden_and_invalid(asc_project):
     assert "never submit" in errors and "unsupported attributes" in errors
 
 
-def test_jwt_token_claims(monkeypatch, tmp_path):
+def _set_key(monkeypatch, wrap=False):
+    import base64
+
     key = ec.generate_private_key(ec.SECP256R1())
     pem = key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8, serialization.NoEncryption())
-    p = tmp_path / "AuthKey_TEST.p8"
-    p.write_bytes(pem)
+    b64 = base64.b64encode(pem).decode()
+    if wrap:  # `base64` without -w0 wraps lines; must still work
+        b64 = "\n".join(b64[i:i + 76] for i in range(0, len(b64), 76))
     monkeypatch.setenv("ASC_KEY_ID", "KEY123")
     monkeypatch.setenv("ASC_ISSUER_ID", "issuer-uuid")
-    monkeypatch.setenv("ASC_PRIVATE_KEY_PATH", str(p))
+    monkeypatch.setenv("ASC_KEY_CONTENT_BASE64", b64)
+    return key
+
+
+@pytest.mark.parametrize("wrap", [False, True])
+def test_jwt_token_claims(monkeypatch, wrap):
+    key = _set_key(monkeypatch, wrap)
     token = auth.TokenProvider(lifetime=3600).token()
     header = jwt.get_unverified_header(token)
     assert header == {"alg": "ES256", "kid": "KEY123", "typ": "JWT"}
@@ -142,5 +151,13 @@ def test_jwt_token_claims(monkeypatch, tmp_path):
 
 
 def test_missing_credentials(monkeypatch):
-    with pytest.raises(auth.MissingCredentials):
+    with pytest.raises(auth.MissingCredentials, match="ASC_KEY_CONTENT_BASE64"):
         auth.TokenProvider()
+
+
+def test_invalid_key_content_never_echoed(monkeypatch):
+    _set_key(monkeypatch)
+    monkeypatch.setenv("ASC_KEY_CONTENT_BASE64", "bm90LWEta2V5LXNlY3JldA==")  # base64("not-a-key-secret")
+    with pytest.raises(auth.MissingCredentials) as exc:
+        auth.TokenProvider().token()
+    assert "bm90" not in str(exc.value) and "secret" not in str(exc.value)

@@ -15,7 +15,7 @@ search in English and Japanese, open every page you cite, record every query, ci
 and give an honest verdict.
 
 Write only `factory/artifacts/research/research.json` and `research.md`. Do not modify state, gates or other stages.
-CLI: `${CLAUDE_PLUGIN_ROOT}/bin/app-factory` (also `app-factory` on PATH).
+CLI: `app-factory` (also `app-factory` on PATH).
 Before returning, run `app-factory validate factory/artifacts/research/research.json --schema research` and
 `app-factory gate research --owner <owner from your brief>`; fix failures you can fix; return the gate summary,
 the verdict and the 3 most important findings.

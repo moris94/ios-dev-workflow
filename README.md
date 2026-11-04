@@ -81,7 +81,7 @@ plugins/ios-app-factory/
 ├── scripts/xcode/*.sh                  # OS 依存操作（xcodegen/xcodebuild/simctl/fastlane）
 ├── templates/ios-app/                  # SwiftUI + SwiftData + StoreKit 2 アプリ雛形（XcodeGen）
 ├── examples/sample-app/                # 成果物の形式例（テスト用フィクスチャ）
-└── tests/                              # pytest（115 件）
+└── tests/                              # pytest（136 件）
 docs/ARCHITECTURE.md                    # 設計書
 ```
 
@@ -128,22 +128,41 @@ gem install bundler          # 雛形の Gemfile で fastlane を固定
 
 ### 1. App Store Connect API キー（環境変数のみ）
 
-App Store Connect →「ユーザとアクセス」→「統合」→「App Store Connect API」でキーを発行し、`.p8` を安全な場所に保存します（**リポジトリの外**）。
+App Store Connect →「ユーザとアクセス」→「統合」→「App Store Connect API」でキーを発行し、次の 3 つを環境変数に設定します（シェルの設定ファイルやシークレット管理ツールで。**リポジトリには置かない**）。
 
 ```bash
-export ASC_KEY_ID=XXXXXXXXXX
-export ASC_ISSUER_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-export ASC_PRIVATE_KEY_PATH=$HOME/.appstoreconnect/AuthKey_XXXXXXXXXX.p8
-# 代替: ASC_PRIVATE_KEY（PEM 本文）または ASC_PRIVATE_KEY_BASE64
+export ASC_KEY_ID="XXXXXXXXXX"
+export ASC_ISSUER_ID="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+export ASC_KEY_CONTENT_BASE64="Base64化したp8の内容"   # 例: base64 -i AuthKey_XXXXXXXXXX.p8 | tr -d '\n'
 ```
 
-- 値はログ・標準出力に出しません（自動マスク）。Hooks が `.p8` の読み出し、`printenv`、秘密値の `echo` をブロックします。
+- `ASC_KEY_CONTENT_BASE64` は改行入りの Base64 でも構いません。デコード結果が PEM の秘密鍵でなければエラーになります（エラーメッセージに値は出ません）。
+- JWT の署名はメモリ上で行います。TestFlight アップロードでは `xcodebuild -authenticationKeyPath` がファイルを必要とするため、`.factory-tmp/asc-key/`（Git 対象外、パーミッション 0600）に一時的に書き出し、終了時に必ず削除します。Fastlane には `key_content` + `is_key_content_base64` で渡します。
+- 値はログ・標準出力に出しません（自動マスク）。Claude のコマンドに `$ASC_KEY_CONTENT_BASE64` を含めること自体を Hooks がブロックします（`printenv`、`.p8` の読み出しも同様）。存在確認は `app-factory doctor` で行います。
 - JWT は ES256、`aud=appstoreconnect-v1`、有効期限は最大 20 分で自動更新されます。
 
-### 2. アプリレコード
+### 2. 代表ユースケースの事前承認（確認ダイアログなしで実行）
+
+`app-factory init` が、アプリのリポジトリの `.claude/settings.json` に次の許可ルールを書き込みます。チームで共有するためコミットします。個人用にしたい場合は `app-factory permissions install --local` で `settings.local.json` に書き込みます。不要なら `init --no-permissions`、取り消しは `app-factory permissions remove` です（自分で追加したルールは消しません）。
+
+| ユースケース | 許可ルール |
+|---|---|
+| ワークフロー CLI 全般（状態・ゲート・生成・スクショ合成・サポートページ・ASC plan/apply・TestFlight 検証・Readiness・各種 dry-run・`app-factory xcode build/test/capture/testflight`） | `Bash(app-factory *)` |
+| Xcode の調査用コマンド | `Bash(xcodebuild -version)`, `Bash(xcodebuild -list *)`, `Bash(xcodebuild -showsdks)`, `Bash(xcrun simctl list *)`, `Bash(xcodegen generate *)` |
+| Git の確認とローカルコミット（**push は含まない**） | `Bash(git status *)`, `Bash(git diff *)`, `Bash(git log *)`, `Bash(git add *)`, `Bash(git commit *)` |
+| 市場・競合・ASO 調査 | `WebSearch`, `WebFetch` |
+| アプリ・テスト・成果物の編集 | `Edit(/factory/**)`, `Edit(/App/**)`, `Edit(/AppTests/**)`, `Edit(/AppUITests/**)`, `Edit(/project.yml)`, `Edit(/fastlane/**)`, `Edit(/Gemfile)`, `Edit(/.gitignore)` |
+| Notion へのページ投稿（検索・取得・作成・更新のみ。削除は含まない） | `mcp__Notion__notion-search`, `…notion-fetch`, `…notion-create-pages`, `…notion-update-page`（サーバー名が違う場合は `--notion-server <名前>`） |
+| **常に拒否**（人間専用） | `Bash(app-factory approve *)`, `Bash(app-factory evidence *)` |
+
+> **注意**: Claude Code は、まだ信頼していないフォルダーではプロジェクトの `permissions.allow` を無視します。初めてそのリポジトリで Claude Code を対話モードで開いたときに、**信頼ダイアログで許可**してください。以降は確認なしで実行されます。
+
+`app-factory permissions show` で一覧を表示できます。許可ルールがあっても Hooks は先に実行されるため、承認・証跡の記録、審査提出の直接実行、秘密情報へのアクセス、機械管理ファイルの編集は引き続きブロックされます。**審査提出・公開の人間承認はこの事前承認の対象外**です。
+
+### 3. アプリレコード
 App Store Connect の「マイ App」で、`factory/config.json` と同じ Bundle ID のアプリを 1 度だけ作成します（API ではアプリを新規作成できません）。
 
-### 3. サポート URL・プライバシーポリシー URL
+### 4. サポート URL・プライバシーポリシー URL
 
 **指定しない場合（既定）**: `support_page` 工程が、サポートとプライバシーポリシーを 1 つにまとめた日英のページを生成・公開し、その URL を `app.links.support` と `app.links.privacy_policy` の**両方**に設定します。
 
@@ -226,7 +245,7 @@ macOS 用スクリプト: `scripts/xcode/build.sh`, `test.sh`, `capture_screensh
 | design | WCAG コントラスト（本文 4.5:1、UI 3:1、ライト/ダーク）、定番 AI 配色との ΔE ≥12、Apple HIG と Design Skill の参照記録、キャプションのコントラスト |
 | implementation | 必須ファイル、生成コード最新、TODO/プレースホルダーなし、SwiftData、StoreKit 2（`Transaction.updates`/`currentEntitlements`/`AppStore.sync`/`finish`）、画面ごとの View、iOS 17+、version/build 一致、アイコンあり、単体テスト ≥5、**現行ソースでのビルド成功** |
 | localization | sourceLanguage en、全キー ja 翻訳済み、空値なし、書式指定子一致、コード中の文字列が全てカタログにある、InfoPlist 表示名、CFBundleLocalizations |
-| testing | 失敗 0、単体 ≥5・UI ≥2、課金系テスト合格、en と ja で実行、現行ソースと一致、全シーンの ScreenshotTests |
+| testing | 失敗 0、単体 ≥5・UI ≥2、課金系テスト合格、en と ja で実行、現行ソースと一致、全シーンの ScreenshotTests。部分再実行がある場合: 全件実行が起点、アプリコードが全件実行時と同一、environment の再実行ではソース無変更、原因とメモの記録、回数上限（既定 2）。flaky は警告 |
 | aso | 名前/サブタイトル ≤30、キーワード ≤100・形式・重複、プロモ ≤170、説明 300–4000、日本語、キャプション長、価格表記なし、URL 一致、競合名と非重複 |
 | screenshots | locale×device×scene 全数、正確な解像度、RGB/アルファなし、ハッシュ一致、生画像がシミュレーター解像度、キャプション一致、レシピ最新、**再レンダリングでバイト一致** |
 | asc_sync | Plan の Schema、リクエスト構造検証、提出/公開系 API を含まない、最新の成果物から生成、apply 時は適用後の再 Plan が 0 件 |
@@ -250,6 +269,21 @@ macOS 用スクリプト: `scripts/xcode/build.sh`, `test.sh`, `capture_screensh
 | `factory/asc/plan.json`, `ledger.json`, `sync-report.json` | ASC 変更計画・送信済み操作台帳 | ✔ |
 | `factory/approvals/*.json` | 人間承認（署名付き） | ✔ |
 | `.factory-tmp/` | ログ、ロック、DerivedData、xcresult、生成途中ファイル | ✘（gitignore） |
+
+### 試験の部分再実行（失敗したケースだけ）
+
+全件をもう一度流すのは時間がかかるため、失敗の原因が**環境**か**テスト側の不具合**なら、失敗したケースだけの再実行を認めます。
+
+| 原因 | 対応 | コマンド |
+|---|---|---|
+| アプリの不具合 | `App/**` を修正 | `app-factory xcode test`（**全件**） |
+| 環境（シミュレーター起動タイムアウト、ランナーの異常など） | 何も変えない | `app-factory xcode test --only-failed --reason environment --note "原因"` |
+| テストの不具合（識別子の誤り、待機不足、誤った期待値） | `AppTests/`・`AppUITests/` だけ修正 | `app-factory xcode test --only-failed --reason test-defect --note "原因"` |
+
+- 再実行の対象: `environment` は失敗したケースのみ。`test-defect` は失敗したケースに加え、変更したテストクラスの全テスト（両言語）。結果は直前のレポートに統合されます。
+- 機械的に拒否する条件: 全件実行の後にアプリコード（`App/**`, `project.yml`）が変わった、`environment` と申告したのにソースが変わった、`test-defect` と申告したのにテストが変わっていない、メモがない（10 文字未満）、部分再実行が上限（`testing.max_partial_reruns`、既定 2 回）に達した、失敗したケースが再実行に含まれていない。
+- 再実行でだけ通ったテストは **flaky**、修正中に削除された失敗テストは **removed** として記録され、ゲートで警告になります。
+- 再実行の対象は `app-factory report rerun-plan --reason environment` で確認できます。
 
 ## 状態管理・再開・重複防止・仕様変更
 
@@ -308,9 +342,10 @@ API で設定できないため人間が行うもの: App のプライバシー�
 | `screenshots.fonts` | {} | 例 `{"ja": "/System/Library/Fonts/ヒラギノ角ゴシック W6.ttc"}` |
 | `release.require_manual_purchase_test` | true | 人による課金テスト記録を必須にする |
 | `release.approval_ttl_hours` | 72 | 承認の有効期限 |
+| `testing.max_partial_reruns` | 2 | 全件実行 1 回あたりの、失敗ケースのみの再実行の上限 |
 | `locks.stale_after_minutes` | 30 | ロック失効（再開可能になるまで）の時間 |
 
-環境変数: `FACTORY_SUPPORT_EMAIL`（サポートページに載せるメールアドレス）, `FACTORY_NOTION_PARENT_PAGE`（任意: 公開済みの Notion 親ページ）, `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY_PATH`（or `ASC_PRIVATE_KEY[_BASE64]`）, `FACTORY_SIMULATOR`（撮影・試験用シミュレーター名の上書き）, `FACTORY_APPROVER_KEY_PATH`, `FACTORY_REHEARSAL=1`（シミュレーター結果を受け入れる予行演習。本番 ASC には影響しません）, `FACTORY_DEBUG=1`（マスク済みのスタックトレース）。
+環境変数: `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_CONTENT_BASE64`（p8 を Base64 化した内容）, `FACTORY_SUPPORT_EMAIL`（サポートページに載せるメールアドレス）, `FACTORY_NOTION_PARENT_PAGE`（任意: 公開済みの Notion 親ページ）, `FACTORY_SIMULATOR`（撮影・試験用シミュレーター名の上書き）, `FACTORY_APPROVER_KEY_PATH`, `FACTORY_REHEARSAL=1`（シミュレーター結果を受け入れる予行演習。本番 ASC には影響しません）, `FACTORY_DEBUG=1`（マスク済みのスタックトレース）。
 
 ## Git に保存するもの・しないもの
 
@@ -321,7 +356,7 @@ API で設定できないため人間が行うもの: App のプライバシー�
 ```bash
 cd plugins/ios-app-factory
 python3 -m pip install -r requirements-dev.txt
-python3 -m pytest -q                        # 115 tests
+python3 -m pytest -q                        # 136 tests
 claude plugin validate --strict .           # マニフェスト・Skills・Agents・Hooks の検証
 ```
 
@@ -354,11 +389,16 @@ claude plugin validate --strict .           # マニフェスト・Skills・Agen
 | Notion にページが重複した | `publication.json` の `notion_page_id` があれば、再実行時はそのページを更新します。重複したページは Notion 上で削除してください |
 | `legibility.coverage` / `glyph.contrast` が不合格 | アイコンのモチーフが小さすぎる・大きすぎる・薄すぎます。`app-factory icon preview` で 60px 表示を見て `icon.json` を調整 |
 | `palette.from-design` が不合格 | デザインパレット外の色は、`extra_colors` に理由付きで追加するか、パレット内の色に変更 |
+| `App Store Connect credentials missing: ...` | `ASC_KEY_ID` / `ASC_ISSUER_ID` / `ASC_KEY_CONTENT_BASE64` のうち、表示された変数を設定 |
+| `ASC_KEY_CONTENT_BASE64 is not valid base64` / `does not decode to a PEM` | `.p8` ファイル全体を Base64 化しているか確認（`base64 -i AuthKey_X.p8 \| tr -d '\n'`） |
+| `partial re-run not allowed: app sources ... changed` | アプリを修正した後は全件の再実行が必要です: `app-factory xcode test` |
+| `partial re-run did not cover required tests` | 失敗したケース（`test-defect` の場合は変更したクラスの全テスト）が実行されていません。`rerun-plan` の出力を確認 |
+| 確認ダイアログが出る / `Ignoring N permissions.allow entries ... not been trusted` | そのリポジトリで Claude Code を対話モードで一度開き、信頼ダイアログで許可してください。ルールがない場合は `app-factory permissions install` を実行。Notion のサーバー名が違う場合は `--notion-server <名前>` |
 | Hook に止められた | メッセージに正しい手順（`app-factory` コマンド）が表示されます。回避はしないでください |
 
 ## 検証状況と制約
 
-- この環境（Linux）で実行・検証したもの: Python エンジン、全ゲート、ASC の Plan・検証、シミュレーターへの適用・クラッシュ復旧・冪等性、承認と Hooks、スクリーンショット合成（Noto CJK）、アイコン描画、サポートページの生成と記録、全 115 テスト、`claude plugin validate --strict`。
+- この環境（Linux）で実行・検証したもの: Python エンジン、全ゲート、ASC の Plan・検証、シミュレーターへの適用・クラッシュ復旧・冪等性、承認と Hooks、スクリーンショット合成（Noto CJK）、アイコン描画、サポートページの生成と記録、全 136 テスト、`claude plugin validate --strict`。
 - Notion への実際の投稿は、MCP ツールを使う Claude の手順（Skill）として実装しています。Notion MCP を接続した環境での実投稿はまだ試していません（テストでは公開 URL の確認を代替しています）。
 - **macOS / Xcode が必要なため、ここでは実行できていないもの**: SwiftUI 雛形のコンパイル、XCTest/XCUITest の実行、シミュレーターでの撮影、Fastlane での TestFlight アップロード、実際の App Store Connect への書き込み。雛形の Swift コードと `scripts/xcode/*.sh` は、初回は Mac で `build.sh` → `test.sh` を流して確認してください（失敗はそれぞれのゲートで検出されます）。
 - App Store Connect API の仕様は Apple 公式ドキュメント（JWT ES256、`/v1`・`/v2` の JSON:API リソース、スクリーンショットの予約→アップロード→コミット、`reviewSubmissions`）に基づいています。ただし内蔵シミュレーターは Apple のサーバー側検証を再現しません。初回の本番適用前に、必ずライブ読み取りの dry-run（資格情報ありの `asc plan`）で差分を確認してください。
