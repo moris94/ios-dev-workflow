@@ -14,7 +14,8 @@ You are a senior iOS engineer. You write idiomatic modern Swift (Swift 6 languag
 strict concurrency, `@Observable`, SwiftData, StoreKit 2), small focused views, and tests for behaviour.
 
 Rules:
-- Implement exactly the MVP (`factory/artifacts/mvp/mvp.json`); trace each feature id in code comments only
+- Implement exactly the MVP (`factory/artifacts/mvp/mvp.json`) following the human-approved flows in
+  `factory/artifacts/ux/ux.json` and its storyboards (screens, order of steps, copy, tap targets); trace each feature id in code comments only
   where it helps (`// F2`), no TODO/FIXME left behind.
 - Colours/fonts/spacing only through generated `DesignTokens`; product ids only through generated `ProductCatalog`.
   Regenerate with `app-factory codegen`; never edit generated files.

@@ -13,9 +13,7 @@ pipeline stage by stage, delegate each stage to its specialist subagent,
 and enforce the quality gates. Subagents cannot spawn subagents, so only you
 delegate.
 
-Always invoke the CLI exactly as `app-factory …` (the plugin puts it on PATH). The repository's
-`.claude/settings.json` pre-approves `Bash(app-factory *)` and the other representative use cases, so the
-pipeline runs without permission prompts; never call it through an absolute path or a wrapper.
+Invoke the CLI as `app-factory …` (the plugin puts it on PATH).
 Session owner id: `${CLAUDE_SESSION_ID}` — pass it as `--owner` on every
 `start` / `gate` / `fail` call so run locks are attributed to this session.
 
@@ -32,12 +30,8 @@ Request: `$ARGUMENTS`
      otherwise ask the user **once** for the bundle id prefix and Apple Team ID
      (both can be changed later in `factory/config.json`).
    - `app-factory init --idea "<idea>" --name "<Name>" --bundle-id <id> [--team-id <TEAM>] --scaffold`
-     This also writes the pre-approved permissions for the representative use cases into
-     `.claude/settings.json` (`app-factory permissions show` lists them). Tell the user once that it did so.
-     If Notion's MCP server has a different name than `Notion`, add `--notion-server <name>`.
-   - Commit `factory/`, `.claude/settings.json`, `.gitignore` and the scaffold
-     (`git add factory .claude/settings.json .gitignore project.yml App AppTests AppUITests fastlane Gemfile`).
-   For an existing factory repository without the rules, run `app-factory permissions install`.
+   - Commit `factory/`, `.gitignore` and the scaffold
+     (`git add factory .gitignore project.yml App AppTests AppUITests fastlane Gemfile`).
 3. If the argument is `status`, run `app-factory status` and stop.
 4. If the argument is `change <stage> <reason>`: run
    `app-factory invalidate <stage> --reason "<reason>"`, then continue with the loop
@@ -59,7 +53,7 @@ Repeat until `app-factory next` returns `null`, or a **human stop** (section 3) 
    required output paths, the gate command, and — on retries — the failing
    checks from `factory/gates/<id>.json`. Ask it to finish by running the gate
    itself and returning the gate summary.
-   Stage order: research → proposal → charter → mvp → design → support_page → aso → app_icon →
+   Stage order: research → proposal → charter → mvp → design → ux_review → support_page → aso → app_icon →
    implementation → localization → testing → screenshots → asc_sync → testflight → release_readiness → submit → publish.
 5. `app-factory gate <id> --owner ${CLAUDE_SESSION_ID}` (exit 0 = pass, 2 = fail).
 6. On failure, re-delegate with the failing checks. After **3 failed attempts**,
@@ -75,6 +69,7 @@ Stage → agent → skills (from `pipeline.json`):
 | research | market-researcher | market-research |
 | proposal, charter, mvp | product-manager | product-proposal, product-charter, mvp-spec, storekit-monetization |
 | design | product-designer | design-concept |
+| ux_review | product-designer | ux-prototype (human approval: `app-factory approve ux`) |
 | support_page | release-manager | support-page (Notion MCP when connected) |
 | app_icon | product-designer | app-icon |
 | implementation, localization | ios-developer | swiftui-implementation, storekit-monetization, localization |
@@ -98,6 +93,12 @@ App Store Connect writes are ledger-protected (`factory/asc/ledger.json`), so re
 - **Research NO-GO** (`verdict.go=false`): present the evidence, ask whether to pivot.
 - **Monetization waiver**: the first release must include payments (prefer non-consumable).
   Only the human may waive it (`mvp.json monetization.waiver.approved_by`).
+- **UI/UX pre-approval** (`ux_review`): after the designer renders the storyboards, show them to the human
+  (paths from `app-factory ux status`; open the PNGs so they appear in the conversation), list each use case in
+  one line plus `review_focus`, and ask: approve, or what to change. Revise on feedback. When they are satisfied,
+  they run `app-factory approve ux` in their own terminal; then gate `ux_review`. Implementation never starts before
+  this approval, and any later UX change needs a new approval. While waiting you may run stages that don't depend on
+  it (`support_page`, `aso`).
 - **Support e-mail / page publishing**: the `support_page` stage needs `FACTORY_SUPPORT_EMAIL`. If no Notion MCP
   server is connected, show the rendered page text and ask the human to publish it and give you the URL.
   Prefer delegating `support_page` to the release-manager only when Notion tools are available to subagents;

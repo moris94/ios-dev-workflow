@@ -52,7 +52,7 @@ GIT_TMP = re.compile(r"(\.factory-tmp|\.xcresult|DerivedData|\.p8$|(^|/)\.env|xc
 
 MACHINE_OWNED = PROTECTED_PATHS
 GENERATED = re.compile(r"(App/Sources/Design/DesignTokens\.swift|App/Sources/Store/ProductCatalog\.swift|App/Resources/Products\.storekit|App/Resources/Assets\.xcassets/AppIcon\.appiconset/.*|"
-                       r"factory/screenshots/(manifest\.json|final/.*)|factory/asc/plan\.json|factory/reports/(build|tests)\.json)$")
+                       r"factory/screenshots/(manifest\.json|final/.*)|factory/artifacts/ux/storyboards/.*|factory/asc/plan\.json|factory/reports/(build|tests)\.json)$")
 
 
 def _deny(reason: str) -> int:
@@ -140,7 +140,7 @@ def guard_files(payload: dict) -> int:
         return _deny(f"{rel} is machine-owned (state, gates, approvals, ledger, evidence). Use `app-factory` commands.")
     if GENERATED.search(rel):
         return _deny(f"{rel} is generated. Edit the source artifact and run the generator "
-                     "(`app-factory codegen`, `icon render`, `screenshots render`, `asc plan`, or scripts/xcode/*.sh).")
+                     "(`app-factory codegen`, `icon render`, `ux render`, `screenshots render`, `asc plan`, or scripts/xcode/*.sh).")
     return 0
 
 

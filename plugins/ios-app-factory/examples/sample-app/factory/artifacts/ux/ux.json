@@ -1,0 +1,413 @@
+{
+  "use_cases": [
+    {
+      "id": "UC1",
+      "title": {
+        "en-US": "Capture the first note",
+        "ja": "最初のメモを書く"
+      },
+      "kind": "first_run",
+      "persona": "New user right after install",
+      "trigger": "Opens the app for the first time",
+      "goal": "Save a thought within two taps",
+      "features": [
+        "F1"
+      ],
+      "principle_ids": [
+        "P1",
+        "P2"
+      ],
+      "steps": [
+        {
+          "screen": "home",
+          "action": "Tap + in the empty state",
+          "expected": "Editor opens with the title field focused",
+          "copy": {
+            "en-US": "No notes yet — Tap + to capture your first note.",
+            "ja": "まだメモがありません — ＋をタップして最初のメモを書きましょう。"
+          },
+          "wireframe": {
+            "title": "Notes",
+            "presentation": "root",
+            "nav": {
+              "leading": "Settings",
+              "trailing": "+"
+            },
+            "tap": 1,
+            "components": [
+              {
+                "type": "empty",
+                "text": "No notes yet",
+                "lines": [
+                  "Tap + to capture your first note."
+                ]
+              },
+              {
+                "type": "button",
+                "style": "primary",
+                "text": "+ Add Note"
+              }
+            ]
+          }
+        },
+        {
+          "screen": "editor",
+          "action": "Type a title and tap Save",
+          "expected": "Back on Home, the note is listed first",
+          "copy": {
+            "en-US": "New Note · Save",
+            "ja": "新規メモ・保存"
+          },
+          "wireframe": {
+            "title": "New Note",
+            "presentation": "sheet",
+            "nav": {
+              "leading": "Cancel",
+              "trailing": "Save"
+            },
+            "tap": "trailing",
+            "components": [
+              {
+                "type": "field",
+                "text": "Groceries"
+              },
+              {
+                "type": "field",
+                "text": "Note"
+              },
+              {
+                "type": "toggle",
+                "text": "Pin to top",
+                "on": false
+              }
+            ]
+          }
+        },
+        {
+          "screen": "home",
+          "action": "(done)",
+          "expected": "The new note appears with a relative time",
+          "wireframe": {
+            "title": "Notes",
+            "presentation": "root",
+            "nav": {
+              "leading": "Settings",
+              "trailing": "+"
+            },
+            "components": [
+              {
+                "type": "list",
+                "rows": [
+                  {
+                    "title": "Groceries",
+                    "subtitle": "just now"
+                  }
+                ]
+              },
+              {
+                "type": "text",
+                "style": "caption",
+                "text": "1 of 10 free notes used"
+              }
+            ]
+          }
+        }
+      ],
+      "success_criteria": [
+        "≤ 2 taps from launch to typing",
+        "Save disabled while the title is empty"
+      ],
+      "edge_cases": [
+        "User cancels: nothing is saved",
+        "Very long title wraps in the list"
+      ]
+    },
+    {
+      "id": "UC2",
+      "title": {
+        "en-US": "Find and edit a note",
+        "ja": "メモを探して編集する"
+      },
+      "kind": "core",
+      "persona": "Returning user with several notes",
+      "trigger": "Wants to update a pinned plan",
+      "goal": "Edit and keep important notes on top",
+      "features": [
+        "F2"
+      ],
+      "principle_ids": [
+        "P1"
+      ],
+      "steps": [
+        {
+          "screen": "home",
+          "action": "Tap the pinned note",
+          "expected": "Editor opens with the existing text",
+          "wireframe": {
+            "title": "Notes",
+            "presentation": "root",
+            "nav": {
+              "leading": "Settings",
+              "trailing": "+"
+            },
+            "tap": 0,
+            "components": [
+              {
+                "type": "list",
+                "rows": [
+                  {
+                    "title": "Weekend trail route",
+                    "subtitle": "Ridge loop, meet at 7am",
+                    "accessory": "Pinned"
+                  },
+                  {
+                    "title": "New app idea",
+                    "subtitle": "Habits without notifications"
+                  },
+                  {
+                    "title": "Books to read",
+                    "subtitle": "The Design of Everyday Things"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "screen": "editor",
+          "action": "Change the time and tap Save",
+          "expected": "Note updated, stays pinned at the top",
+          "copy": {
+            "en-US": "Edit Note · Pin to top",
+            "ja": "メモを編集・先頭にピン留め"
+          },
+          "wireframe": {
+            "title": "Edit Note",
+            "presentation": "sheet",
+            "nav": {
+              "leading": "Cancel",
+              "trailing": "Save"
+            },
+            "tap": "trailing",
+            "components": [
+              {
+                "type": "field",
+                "text": "Weekend trail route"
+              },
+              {
+                "type": "field",
+                "text": "Ridge loop, meet at 8am"
+              },
+              {
+                "type": "toggle",
+                "text": "Pin to top",
+                "on": true
+              }
+            ]
+          }
+        },
+        {
+          "screen": "home",
+          "action": "Swipe a note left to delete",
+          "expected": "Note removed; free-tier counter decreases",
+          "wireframe": {
+            "title": "Notes",
+            "presentation": "root",
+            "nav": {
+              "leading": "Settings",
+              "trailing": "+"
+            },
+            "components": [
+              {
+                "type": "list",
+                "rows": [
+                  {
+                    "title": "Weekend trail route",
+                    "subtitle": "Ridge loop, meet at 7am",
+                    "accessory": "Pinned"
+                  },
+                  {
+                    "title": "New app idea",
+                    "subtitle": "Habits without notifications"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "success_criteria": [
+        "Pinned notes always first",
+        "Edits persist after relaunch"
+      ],
+      "edge_cases": [
+        "Deleting the last note shows the empty state"
+      ]
+    },
+    {
+      "id": "UC3",
+      "title": {
+        "en-US": "Unlock Pro at the free limit",
+        "ja": "無料枠の上限でProを購入する"
+      },
+      "kind": "monetization",
+      "persona": "Engaged free user with 10 notes",
+      "trigger": "Taps + with 10 notes",
+      "goal": "Understand the one-time price and unlock unlimited notes",
+      "features": [
+        "F3"
+      ],
+      "principle_ids": [
+        "P3"
+      ],
+      "steps": [
+        {
+          "screen": "home",
+          "action": "Tap + with 10 of 10 free notes used",
+          "expected": "Paywall opens instead of the editor",
+          "wireframe": {
+            "title": "Notes",
+            "presentation": "root",
+            "nav": {
+              "leading": "Settings",
+              "trailing": "+"
+            },
+            "tap": "trailing",
+            "components": [
+              {
+                "type": "list",
+                "rows": [
+                  {
+                    "title": "Weekend trail route",
+                    "subtitle": "Ridge loop, meet at 7am",
+                    "accessory": "Pinned"
+                  },
+                  {
+                    "title": "New app idea",
+                    "subtitle": "Habits without notifications"
+                  },
+                  {
+                    "title": "Books to read",
+                    "subtitle": "The Design of Everyday Things"
+                  }
+                ]
+              },
+              {
+                "type": "text",
+                "style": "caption",
+                "text": "10 of 10 free notes used"
+              }
+            ]
+          }
+        },
+        {
+          "screen": "paywall",
+          "action": "Tap Unlock Pro",
+          "expected": "App Store purchase sheet; on success the paywall closes",
+          "copy": {
+            "en-US": "Pay once. Keep it forever. · One-time purchase. No subscription.",
+            "ja": "一度の購入で、ずっと使えます。・買い切りです。サブスクリプションではありません。"
+          },
+          "wireframe": {
+            "title": "Unlock Pro",
+            "presentation": "sheet",
+            "nav": {
+              "leading": "Close"
+            },
+            "tap": 2,
+            "components": [
+              {
+                "type": "text",
+                "style": "body",
+                "text": "Pay once. Keep it forever."
+              },
+              {
+                "type": "card",
+                "lines": [
+                  "Unlimited notes",
+                  "Pin what matters",
+                  "Support an independent developer"
+                ]
+              },
+              {
+                "type": "button",
+                "style": "primary",
+                "text": "Unlock Pro for $4.99"
+              },
+              {
+                "type": "text",
+                "style": "caption",
+                "text": "One-time purchase. No subscription."
+              },
+              {
+                "type": "button",
+                "style": "link",
+                "text": "Restore Purchases"
+              },
+              {
+                "type": "button",
+                "style": "link",
+                "text": "Terms of Use · Privacy Policy"
+              }
+            ]
+          }
+        },
+        {
+          "screen": "settings",
+          "action": "(done) Open Settings",
+          "expected": "Shows Pro unlocked; Restore Purchases still available",
+          "wireframe": {
+            "title": "Settings",
+            "presentation": "sheet",
+            "nav": {
+              "trailing": "Done"
+            },
+            "components": [
+              {
+                "type": "list",
+                "rows": [
+                  {
+                    "title": "Pro unlocked",
+                    "accessory": "✓"
+                  },
+                  {
+                    "title": "Restore Purchases"
+                  }
+                ]
+              },
+              {
+                "type": "list",
+                "rows": [
+                  {
+                    "title": "Support"
+                  },
+                  {
+                    "title": "Privacy Policy"
+                  },
+                  {
+                    "title": "Version",
+                    "accessory": "1.0.0 (1)"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "success_criteria": [
+        "Price comes from StoreKit",
+        "Restore visible without purchasing",
+        "Cancel leaves the app usable"
+      ],
+      "edge_cases": [
+        "Ask to Buy pending message",
+        "Purchase fails: error shown, nothing unlocked"
+      ]
+    }
+  ],
+  "review_focus": [
+    "Is the free limit of 10 notes the right moment for the paywall?",
+    "Is 'Pay once. Keep it forever.' clear enough in Japanese?"
+  ],
+  "design_notes": "Forest Paper palette; sheets for editing and the paywall keep Home calm (P2)."
+}

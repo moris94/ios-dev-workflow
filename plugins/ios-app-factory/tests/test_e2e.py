@@ -13,7 +13,7 @@ from appfactory.engine import Engine
 from appfactory.jsonio import read_json, write_json_atomic
 from appfactory.release import compute_readiness
 from appfactory import support_page
-from conftest import HELP_URL, copy_artifacts, run, run_json
+from conftest import HELP_URL, copy_artifacts, human_approves_ux, run, run_json
 from helpers_sim import fake_build, fake_raw_captures, fake_tests
 
 OWNER = "session-e2e"
@@ -49,6 +49,17 @@ def test_full_pipeline_rehearsal(project, capsys, tmp_path, monkeypatch):
         start(project, capsys, stage)
         copy_artifacts(project, stage)
         gate(project, capsys, stage)
+
+    # Representative use cases: storyboards, then the human's UI/UX approval (before any implementation)
+    rc, nxt = run_json(root, capsys, "next")
+    assert nxt["id"] == "ux_review" and nxt["human_approval"] == "ux"
+    start(project, capsys, "ux_review")
+    copy_artifacts(project, "ux")
+    assert run(root, "ux", "render") == 0
+    rc, _ = run_json(root, capsys, "gate", "ux_review", "--owner", OWNER)
+    assert rc == 2                                    # not approved yet → implementation can't start
+    human_approves_ux(project)
+    gate(project, capsys, "ux_review")
 
     # Support + privacy page: one combined page, e-mail from the environment, published (Notion simulated)
     monkeypatch.setenv("FACTORY_SUPPORT_EMAIL", "help@stillnote.example")

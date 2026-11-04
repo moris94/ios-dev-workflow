@@ -105,6 +105,29 @@
       "gate": "design"
     },
     {
+      "id": "ux_review",
+      "title": "Representative use cases: UI/UX storyboards approved by a human before implementation",
+      "agent": "product-designer",
+      "skills": [
+        "ux-prototype"
+      ],
+      "depends_on": [
+        "charter",
+        "mvp",
+        "design"
+      ],
+      "inputs": [],
+      "outputs": {
+        "include": [
+          "factory/artifacts/ux/ux.json",
+          "factory/artifacts/ux/ux.md",
+          "factory/artifacts/ux/storyboards/*.png"
+        ]
+      },
+      "gate": "ux_review",
+      "human_approval": "ux"
+    },
+    {
       "id": "support_page",
       "title": "Combined privacy policy & support page (en/ja), published",
       "agent": "release-manager",
@@ -184,6 +207,7 @@
       "depends_on": [
         "mvp",
         "design",
+        "ux_review",
         "app_icon"
       ],
       "inputs": [

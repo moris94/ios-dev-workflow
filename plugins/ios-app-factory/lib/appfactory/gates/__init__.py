@@ -102,7 +102,7 @@ class GateContext:
 
 def run_gate(project: Project, stage, state: dict) -> dict:
     # import side-effect: registers all gates
-    from . import planning, design, build, l10n, screenshots, release, brand  # noqa: F401
+    from . import planning, design, build, l10n, screenshots, release, brand, ux  # noqa: F401
 
     ctx = GateContext(project, stage.id, state)
     not_passed = [d for d in stage.depends_on if state["stages"][d]["status"] != "passed"]

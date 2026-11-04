@@ -107,6 +107,13 @@ def testing_gate(ctx):
     if mvp:
         missing = [s["id"] for s in mvp["screenshot_scenes"] if f"\"{s['id']}\"" not in shots]
         ctx.check("uitests.screenshot-scenes", not missing, "ScreenshotTests capture every MVP scene", details=missing or None)
+    ux = ctx.load_json("factory/artifacts/ux/ux.json", required=False)
+    if ux:
+        ui_text = "\n".join(ui.values())
+        missing_uc = [u["id"] for u in ux["use_cases"] if not re.search(rf"\b{u['id']}\b", ui_text)]
+        ctx.check("uitests.use-cases", not missing_uc,
+                  "every approved representative use case is covered by a UI test (mark it `// UCn`)",
+                  details=missing_uc or None)
     if report is None:
         return
     errors = validate(report, "test_report")

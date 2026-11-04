@@ -28,7 +28,7 @@ Purchases and Apple refunds when the app sells IAP). Keep the headings and the p
 
 ## 3. Publish
 **If a Notion MCP server is connected** (tools named like `mcp__Notion__notion-create-pages`,
-`…notion-update-page`, `…notion-search`, `…notion-fetch`; these four are pre-approved):
+`…notion-update-page`, `…notion-search`, `…notion-fetch`):
 1. Parent page: use `FACTORY_NOTION_PARENT_PAGE` if set (a page URL or id). Strongly recommended: a parent page
    that is already *Shared → Published to web*, so the new child page is public immediately (the Notion API/MCP
    cannot switch on "Publish to web" itself). If unset, search Notion for a suitable published parent or ask the human.

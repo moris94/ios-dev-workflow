@@ -42,10 +42,6 @@ def cmd_init(args):
     if not idea:
         raise SystemExit("--idea or --idea-file is required")
     result = init(root, idea, args.name, args.bundle_id, args.team_id, force=args.force)
-    if not args.no_permissions:
-        from . import permissions
-
-        result["permissions"] = permissions.install(root, args.notion_server or ["Notion"])["settings"]
     if args.scaffold:
         result["scaffolded"] = scaffold(Project(root), force=False)
     from .engine import Engine
@@ -236,19 +232,6 @@ def cmd_screenshots(args):
         _out({d: DEVICES[d] for d in cfg["screenshots"]["devices"]})
 
 
-def cmd_permissions(args):
-    from . import permissions
-
-    project = _project(args)
-    servers = args.notion_server or ["Notion"]
-    if args.action == "install":
-        _out(permissions.install(project.root, servers, local=args.local))
-    elif args.action == "remove":
-        _out(permissions.remove(project.root, servers, local=args.local))
-    else:
-        _out(permissions.describe(servers))
-
-
 XCODE_SCRIPTS = {"build": "build.sh", "test": "test.sh", "capture": "capture_screenshots.sh",
                  "testflight": "testflight_upload.sh"}
 
@@ -261,6 +244,20 @@ def cmd_xcode(args):
     script = PLUGIN_ROOT / "scripts" / "xcode" / XCODE_SCRIPTS[args.action]
     env = dict(os.environ, APP_FACTORY_PROJECT=str(project.root))
     return subprocess.call(["bash", str(script), *args.script_args], cwd=project.root, env=env)
+
+
+def cmd_ux(args):
+    from . import ux
+
+    project = _project(args)
+    if args.action == "render":
+        _out(ux.render(project))
+    else:
+        from . import approval
+
+        ok, msg = approval.verify(project, "ux", ux.ux_digest(project))
+        _out({"storyboards": [project.rel(p) for p in ux.board_paths(project)], "ux_digest": ux.ux_digest(project),
+              "approved": ok, "approval": msg})
 
 
 def cmd_icon(args):
@@ -373,6 +370,21 @@ def cmd_approve(args):
     from .release import READINESS, compute_readiness
 
     project = _project(args)
+    if args.kind == "ux":
+        from . import ux
+
+        changed = [k for k, v in ux.render(project).items() if v != "unchanged"]
+        if changed:
+            print("note: storyboards were re-rendered from ux.json: " + ", ".join(changed))
+        subject = ux.approval_subject(project)
+        if not subject["readiness_digest"] or not ux.board_paths(project):
+            raise SystemExit("no UX storyboards yet: the ux_review stage must produce ux.json and run `app-factory ux render`")
+        print("Open and review the storyboards before approving:")
+        for p in ux.board_paths(project):
+            print(f"  {p}")
+        rec = approval.create(project, "ux", subject, approver=args.approver, note=args.note or "")
+        _out({"approved": "ux", "expires_at": rec["expires_at"]})
+        return
     readiness = read_json(project.root / READINESS)
     if not readiness:
         raise SystemExit("run `app-factory release readiness` first")
@@ -444,16 +456,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--team-id")
     s.add_argument("--scaffold", action="store_true", help="also render the SwiftUI app template")
     s.add_argument("--force", action="store_true")
-    s.add_argument("--no-permissions", action="store_true",
-                   help="don't pre-approve the representative use cases in .claude/settings.json")
-    s.add_argument("--notion-server", action="append", help="Notion MCP server name for permission rules (default: Notion)")
     s.set_defaults(fn=cmd_init)
-
-    s = sub.add_parser("permissions", help="pre-approve the representative use cases in .claude/settings.json")
-    s.add_argument("action", choices=["show", "install", "remove"])
-    s.add_argument("--local", action="store_true", help="write .claude/settings.local.json (personal, not committed)")
-    s.add_argument("--notion-server", action="append", help="Notion MCP server name (default: Notion)")
-    s.set_defaults(fn=cmd_permissions)
 
     s = sub.add_parser("xcode", help="macOS: build | test | capture | testflight (runs scripts/xcode/*.sh)")
     s.add_argument("action", choices=sorted(XCODE_SCRIPTS))
@@ -529,6 +532,10 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--device")
     s.set_defaults(fn=cmd_screenshots)
 
+    s = sub.add_parser("ux", help="representative use-case storyboards for human UI/UX approval")
+    s.add_argument("action", choices=["render", "status"])
+    s.set_defaults(fn=cmd_ux)
+
     s = sub.add_parser("icon", help="render the app icon set from icon.json / preview at home-screen sizes")
     s.add_argument("action", choices=["render", "preview"])
     s.set_defaults(fn=cmd_icon)
@@ -564,7 +571,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.set_defaults(fn=cmd_release)
 
     s = sub.add_parser("approve", help="HUMAN ONLY: approve submission/publication (interactive terminal)")
-    s.add_argument("kind", choices=["submit", "publish"])
+    s.add_argument("kind", choices=["ux", "submit", "publish"])
     s.add_argument("--approver")
     s.add_argument("--note")
     s.set_defaults(fn=cmd_approve)

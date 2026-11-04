@@ -75,16 +75,30 @@ def pass_stage(project: Project, stage: str, owner: str = "test") -> dict:
     return out
 
 
-PLANNING = ("research", "proposal", "charter", "mvp", "design", "support_page", "aso", "app_icon")
+PLANNING = ("research", "proposal", "charter", "mvp", "design", "ux_review", "support_page", "aso", "app_icon")
+
+
+def human_approves_ux(project: Project):
+    """What the human does in their own terminal (`app-factory approve ux`), with a TTY stand-in."""
+    from appfactory import approval, ux
+
+    subject = ux.approval_subject(project)
+    phrase = approval.phrase_for("ux", project.config()["app"]["name"], subject["app_version"], "ux")
+    return approval.create(project, "ux", subject, approver="designer-human", ask=lambda _: phrase,
+                           interactive_check=lambda: True)
 
 
 def pass_planning(project: Project, until: str = "app_icon"):
     """Pass the planning stages with the sample artifacts. support_page uses the human-provided
     links already in config (use-existing); app_icon renders the sample icon spec."""
-    from appfactory import icon, support_page
+    from appfactory import icon, support_page, ux
 
     for stage in PLANNING:
-        if stage == "support_page":
+        if stage == "ux_review":
+            copy_artifacts(project, "ux")
+            ux.render(project)
+            human_approves_ux(project)
+        elif stage == "support_page":
             support_page.use_existing(project)
         else:
             copy_artifacts(project, stage)

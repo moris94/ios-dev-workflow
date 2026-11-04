@@ -1,8 +1,10 @@
 import XCTest
 
-/// Flows from mvp.json acceptance criteria. Elements are found by accessibility identifier,
-/// so the same tests pass in English and Japanese (test.sh runs both).
+/// Flows from mvp.json acceptance criteria and the human-approved representative use cases
+/// (factory/artifacts/ux/ux.json — each use case id must appear here, e.g. `// UC1`).
+/// Elements are found by accessibility identifier, so the same tests pass in English and Japanese.
 final class AppUITests: XCTestCase {
+    // UC1: capture the first note from the empty state
     @MainActor
     func testEmptyStateThenAddNote() {
         let app = launchApp()
@@ -15,6 +17,7 @@ final class AppUITests: XCTestCase {
         XCTAssertTrue(app.buttons["home.row"].firstMatch.waitForExistence(timeout: 5))
     }
 
+    // UC2: find and edit a note
     @MainActor
     func testEditExistingNote() {
         let app = launchApp(["-seedDemoData"])
@@ -36,6 +39,7 @@ final class AppUITests: XCTestCase {
         app.buttons["paywall.close"].tap()
     }
 
+    // UC3: unlock Pro (one-time purchase)
     @MainActor
     func testPurchaseUnlocksPro() {
         let app = launchApp(["-mockPurchaseResult", "success"])
