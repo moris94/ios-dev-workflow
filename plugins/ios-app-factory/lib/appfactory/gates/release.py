@@ -23,6 +23,10 @@ def asc_sync_gate(ctx):
         return
     errors = validate(plan, "asc_plan")
     ctx.check("plan.schema", not errors, "plan valid against schema", details=errors[:20] or None)
+    from ..fastlane_release import backend as release_backend
+
+    ctx.check("plan.backend", plan.get("backend", "api") == release_backend(ctx.project),
+              f"plan made for the configured release backend ({release_backend(ctx.project)})")
     perrs = validate_plan(plan)
     ctx.check("plan.requests", not perrs, f"{len(plan['operations'])} request bodies structurally valid; no submit/release ops",
               details=perrs[:20] or None)
@@ -36,6 +40,11 @@ def asc_sync_gate(ctx):
         ctx.check("sync.converged", report.get("verify_noop") is True, "post-apply re-plan is empty (remote == desired)",
                   details=report.get("remaining") or None)
         ctx.check("sync.report-current", report.get("desired_digest") == plan["desired_digest"], "sync report matches plan")
+        if plan.get("backend") == "fastlane":
+            fl_rep = report.get("fastlane") or {}
+            ctx.check("sync.fastlane-delivered", fl_rep.get("digest") == plan["fastlane"]["digest"] and
+                      fl_rep.get("status") in ("applied", "skipped_ledger", "simulated"),
+                      f"metadata & screenshots delivered by fastlane ({fl_rep.get('status')})")
     else:
         ctx.check("sync.dry-run", report.get("mode") == "dry-run" and not report.get("validation_errors"),
                   "dry-run validated (config asc.mode=dry-run; release readiness will require apply)")

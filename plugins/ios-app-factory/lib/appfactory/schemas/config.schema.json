@@ -185,6 +185,13 @@
         },
         "release_type": {
           "const": "MANUAL"
+        },
+        "backend": {
+          "enum": [
+            "fastlane",
+            "api"
+          ],
+          "description": "fastlane (default) or api (explicit opt-in: everything through the App Store Connect API client)"
         }
       },
       "additionalProperties": true
@@ -199,6 +206,16 @@
         }
       },
       "additionalProperties": true
+    },
+    "testing": {
+      "type": "object",
+      "properties": {
+        "max_partial_reruns": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 10
+        }
+      }
     }
   },
   "additionalProperties": true

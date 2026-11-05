@@ -104,6 +104,8 @@ App Store Connect writes are ledger-protected (`factory/asc/ledger.json`), so re
   Prefer delegating `support_page` to the release-manager only when Notion tools are available to subagents;
   otherwise run that stage yourself in the main conversation (MCP tools are always available here).
 - **Xcode unavailable** (not macOS): stop before `implementation` builds; say what to run on a Mac.
+- **Release backend**: release work runs through fastlane unless the human explicitly chose `release.backend: "api"`.
+  Don't switch it yourself. fastlane must be installed on the Mac (`bundle install` with the scaffolded Gemfile).
 - **ASC credentials / app record**: `asc_sync` in apply mode and `testflight` need `ASC_KEY_ID`,
   `ASC_ISSUER_ID`, `ASC_KEY_CONTENT_BASE64` and an existing app record. Without them run the dry-run
   (`app-factory asc plan`) and stop; the human sets `asc.mode` to `apply` in `factory/config.json`.

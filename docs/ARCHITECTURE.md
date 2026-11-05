@@ -100,6 +100,9 @@ research → proposal → charter → mvp → design → ux_review(人間承認)
 
 ## 6. App Store Connect 操作方針
 
+**リリースのバックエンド**: 既定は `release.backend = "fastlane"`。メタデータとスクリーンショットは `deliver`、TestFlight は `pilot`、ビルド状態・公開は Spaceship、審査提出は `deliver submit_for_review` で行う。レーンは `app-factory` が起動し、結果を JSON で受け取る。IAP・アプリ価格・IAP の初回提出は fastlane に対応機能がないため、ASC API を使う。`"api"` を明示した場合は、以下の自前 API クライアントですべてを処理する。どちらのバックエンドでも、計画・検証・台帳・収束確認の仕組みは共通。
+
+
 1. **望ましい状態を宣言**（`asc/state.py: desired_state`）: config + aso + mvp + screenshots manifest から作る
 2. **リモートの状態を正規化**（live GET / fixture / empty）
 3. **差分 → Plan**（`planner.py`）: 変わったフィールドだけ PATCH、無いものは POST、画像は MD5 で比較。操作には `{ref:…}`（前の操作で得た ID）と `{lookup:…}`（実行時の読み取り専用の解決: 価格ポイント・地域）のプレースホルダーを使う

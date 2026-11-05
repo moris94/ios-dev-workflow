@@ -359,6 +359,13 @@ def cmd_release(args):
         _out(release.submit(project, dry_run=args.dry_run, simulate=args.simulate))
     elif args.action == "publish":
         _out(release.publish(project, dry_run=args.dry_run, simulate=args.simulate))
+    elif args.action == "verify-approval":
+        try:
+            release.verify_approval(project, args.kind)
+        except release.ReleaseError as exc:
+            log(str(exc), level="error")
+            return 3
+        _out({"approved": args.kind})
     elif args.action == "simulate-apple-approval":
         release.simulate_apple_approval(project)
         _out({"simulated_state": "PENDING_DEVELOPER_RELEASE"})
@@ -565,7 +572,8 @@ def build_parser() -> argparse.ArgumentParser:
     s.set_defaults(fn=cmd_evidence)
 
     s = sub.add_parser("release")
-    s.add_argument("action", choices=["readiness", "submit", "publish", "simulate-apple-approval"])
+    s.add_argument("action", choices=["readiness", "submit", "publish", "verify-approval", "simulate-apple-approval"])
+    s.add_argument("kind", nargs="?", choices=["submit", "publish"], help="for verify-approval")
     s.add_argument("--dry-run", action="store_true")
     s.add_argument("--simulate", action="store_true")
     s.set_defaults(fn=cmd_release)

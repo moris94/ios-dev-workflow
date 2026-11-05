@@ -28,8 +28,10 @@ ALWAYS_DENY = [
      "Direct App Store Connect submission/release calls are forbidden; use `app-factory release submit|publish` after human approval."),
     (re.compile(r"(curl|http|wget|python\d?\s+-c).*api\.appstoreconnect\.apple\.com", re.I),
      "Direct App Store Connect API calls are not allowed; use `app-factory asc ...` (ledger-protected, redacted)."),
-    (re.compile(r"\bfastlane\b.*\b(deliver|upload_to_app_store|appstore|release|submit_for_review|precheck_and_submit)\b"),
-     "fastlane deliver/submit lanes are disabled; metadata goes through `app-factory asc`, submission through `app-factory release submit` after human approval."),
+    (re.compile(r"\bfastlane\b.*\b(deliver|upload_to_app_store|appstore|release|submit_for_review|precheck_and_submit|"
+                r"sync_metadata|submit_review|release_version|build_status)\b"),
+     "Run release lanes only through app-factory: `app-factory asc apply` (metadata/screenshots), "
+     "`app-factory testflight verify`, and `app-factory release submit|publish` after human approval."),
     (re.compile(r"submit_for_review\s*[:=]\s*true|automatic_release\s*[:=]\s*true|distribute_external\s*[:=]\s*true", re.I),
      "Automatic submission/release/external distribution flags are forbidden."),
     (re.compile(r"approver\.key"), "The approver key is private to the human approver."),

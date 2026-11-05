@@ -23,8 +23,9 @@ PRICE_TIERS = ["0.00", "0.99", "1.99", "2.99", "3.99", "4.99", "5.99", "6.99", "
 
 class FakeASC:
     def __init__(self, state_path: Optional[Path] = None, bundle_id: str = "com.example.app", fail_after: Optional[int] = None,
-                 uncertain_after: Optional[int] = None):
+                 uncertain_after: Optional[int] = None, shared: bool = False):
         self.state_path = Path(state_path) if state_path else None
+        self.shared = shared  # re-read state before every request: several processes act on one "service"
         self.fail_after = fail_after
         self.uncertain_after = uncertain_after
         self.calls = []
@@ -79,6 +80,10 @@ class FakeASC:
         return Response(200)
 
     def request(self, method: str, path: str, body: Any = None, params: Optional[dict] = None) -> Response:
+        if self.shared and self.state_path and self.state_path.exists():
+            raw = json.loads(self.state_path.read_text())
+            self.db = raw["db"]
+            self._seq = itertools.count(raw["seq"])
         parsed = urlparse(path)
         q = {k: v[0] for k, v in parse_qs(parsed.query).items()}
         q.update(params or {})

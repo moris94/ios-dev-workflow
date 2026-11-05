@@ -12,7 +12,8 @@ user-invocable: false
 2. `app-factory xcode testflight` — runs `bundle exec fastlane beta`
    (`build_app` + `upload_to_testflight` with `skip_submission: true`, internal testers only,
    `app_store_connect_api_key` from env). It never distributes externally or submits.
-3. `app-factory testflight verify` — waits for the build in App Store Connect and writes
+3. `app-factory testflight verify` — reads the build's processing state (fastlane lane `build_status` by default,
+   the API when `release.backend` is `"api"`) and writes
    `factory/reports/testflight.json` (processing state must be `VALID`; build must come from the tested sources).
    Re-run later if the build is still processing.
 Offline rehearsal: `app-factory testflight verify --simulate`.

@@ -142,7 +142,8 @@ def test_full_pipeline_rehearsal(project, capsys, tmp_path, monkeypatch):
     assert run(root, "release", "submit", "--simulate") == 1
     assert "HUMAN APPROVAL REQUIRED" in capsys.readouterr().err
     rc, dry = run_json(root, capsys, "release", "submit", "--dry-run")
-    assert dry["dry_run"] is True and any("Submit for App Review" in o for o in dry["operations"])
+    assert dry["dry_run"] is True and dry["backend"] == "fastlane"
+    assert any("submit_for_review" in o for o in dry["operations"])
     # ... and the gate fails too
     rc, _ = run_json(root, capsys, "gate", "submit", "--owner", OWNER)
     assert rc == 2

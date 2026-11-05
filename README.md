@@ -82,7 +82,7 @@ plugins/ios-app-factory/
 ├── scripts/xcode/*.sh                  # OS 依存操作（xcodegen/xcodebuild/simctl/fastlane）
 ├── templates/ios-app/                  # SwiftUI + SwiftData + StoreKit 2 アプリ雛形（XcodeGen）
 ├── examples/sample-app/                # 成果物の形式例（テスト用フィクスチャ）
-└── tests/                              # pytest（138 件）
+└── tests/                              # pytest（149 件）
 docs/ARCHITECTURE.md                    # 設計書
 ```
 
@@ -292,19 +292,39 @@ macOS 用スクリプト: `scripts/xcode/build.sh`, `test.sh`, `capture_screensh
 - **API 再送防止**: ASC の各操作は決定的キーを持ち、`ledger.json` に結果を記録します。成功済みの操作は二度と送りません。結果が不明な POST は `uncertain` として記録し、再送前に照合（GET）します。
 - **仕様変更**: 各工程は「上流の出力ダイジェスト + 宣言入力（設定は関係するキーのみ）」を記録します。成果物を直接編集した場合も `invalidate` した場合も、該当工程と下流工程が `stale` になり、ゲートで再検証されます。
 
-## App Store Connect 連携
+## App Store Connect 連携（リリース処理）
+
+### バックエンドの方針
+
+**明示的に指定しない限り、リリース処理は fastlane で行います**（`factory/config.json` の `release.backend` が既定で `"fastlane"`）。App Store Connect API を直接使いたい場合だけ、`"api"` を明示します。
+
+| 処理 | `fastlane`（既定） | `api`（明示指定時） |
+|---|---|---|
+| メタデータ（名前・サブタイトル・説明・キーワード・プロモーション・URL・カテゴリ）とスクリーンショット | `deliver`（レーン `sync_metadata`、`automatic_release: false` で **releaseType=MANUAL**、審査提出はしない） | ASC API クライアント |
+| TestFlight アップロード | `upload_to_testflight`（レーン `beta`、社内テストのみ） | 同左（fastlane） |
+| TestFlight ビルドの処理状態の確認 | Spaceship（レーン `build_status`） | ASC API |
+| 審査提出 | `deliver submit_for_review`（レーン `submit_review`） | ASC API（`reviewSubmissions`） |
+| 承認済みバージョンの公開 | Spaceship `create_app_store_version_release_request`（レーン `release_version`） | ASC API（`appStoreVersionReleaseRequests`） |
+| **IAP（作成・日英ローカライズ・価格・販売地域・審査用スクショ）、アプリ価格、IAP の初回審査提出** | **ASC API（例外）** | ASC API |
+
+IAP とアプリ価格だけは、fastlane バックエンドでも ASC API を使います。fastlane（2.241.2 で確認）には IAP を管理する機能がなく、`deliver` の `price_tier` は Apple が非推奨にした価格ティアの API に依存しているためです。
+
+fastlane の各レーンは `app-factory` からだけ起動します。レーンは結果を JSON で返し、`app-factory` が台帳とレポートに記録します。Claude がレーン（`fastlane submit_review` など）や `fastlane deliver` を直接実行することは、Hooks がブロックします。
+
+### コマンド
 
 | モード | コマンド | 内容 |
 |---|---|---|
-| dry-run（オフライン） | `app-factory asc plan` | 資格情報なし: 空のリモートと比較して全操作を表示・検証 |
-| dry-run（ライブ読取） | `app-factory asc plan`（資格情報あり） | GET のみで現在値と差分を計算 |
+| dry-run | `app-factory asc plan` | `deliver` に渡すメタデータ・スクショの一覧とダイジェスト、`deliver` が行う変更、API で行う IAP・価格の操作を表示・検証します（fastlane は実行しません）。資格情報があればライブの現在値と比較し、なければ空の状態と比較します |
 | dry-run（スナップショット） | `app-factory asc plan --fixture snap.json` | 保存済みのリモート状態と比較 |
-| 予行演習 | `app-factory asc apply --simulate` | 内蔵 ASC シミュレーターに適用 → 収束を確認（ネットワーク不要） |
-| 本番適用 | `asc.mode: "apply"` にして `app-factory asc apply` | 差分のみ送信 → 再取得して残り 0 件を確認 |
+| 予行演習 | `app-factory asc apply --simulate` | 内蔵 ASC シミュレーターに適用 → 収束を確認（fastlane・ネットワーク不要） |
+| 本番適用 | `asc.mode: "apply"` にして `app-factory asc apply` | IAP・価格を API で反映 → `deliver` でメタデータ・スクショを反映 → 再取得して残り 0 件を確認 |
 
-設定する項目: アプリ情報（名前、サブタイトル、プライバシー URL、カテゴリ）、バージョン（説明、キーワード、プロモーションテキスト、URL、**releaseType=MANUAL**）、アプリ価格（無料）、非消耗型 IAP（作成、en/ja ローカライズ、価格スケジュール、全地域での販売、審査用スクリーンショット）、スクリーンショットセット（MD5 で比較し、変わった画像だけアップロード、順序を固定）。
+- **再送防止**: `deliver` に渡した内容のダイジェストを台帳（`factory/asc/ledger.json`）に記録します。同じ内容でリモートも変わっていなければ、`deliver` は再実行しません。ASC 上で手動編集されてずれていた場合だけ、もう一度反映します。審査提出・公開のレーンも、一度成功したら再送しません。結果が不明なまま失敗した提出は `uncertain` として記録します。
+- **検証**: 適用後に App Store Connect の状態を読み直し、望ましい状態との差分が 0 件であることを確認します（`deliver` の反映結果も含みます）。
+- `deliver` 用のファイルは `.factory-tmp/fastlane/`（Git 対象外）に毎回再生成します。6.9 インチ（1320×2868）のスクリーンショットは、`deliver` が `APP_IPHONE_67` として認識します。
 
-API で設定できないため人間が行うもの: App のプライバシー（栄養ラベル）、年齢制限の質問票、契約・税務・口座、アプリレコードの初回作成。
+API でも fastlane でも設定できないため人間が行うもの: App のプライバシー（栄養ラベル）、年齢制限の質問票、契約・税務・口座、アプリレコードの初回作成。
 
 ## 人間の承認による審査提出・公開
 
@@ -314,12 +334,13 @@ API で設定できないため人間が行うもの: App のプライバシー�
    cd MyNewApp && app-factory approve submit
    # → 「SUBMIT MyApp 1.0.0 (3)」を正確に入力
    ```
-3. Claude: `app-factory release submit` → ゲート `submit`
-4. Apple の審査通過後（`PENDING_DEVELOPER_RELEASE`）、人間が `app-factory approve publish`、続けて Claude が `app-factory release publish`
+3. Claude: `app-factory release submit` → ゲート `submit`（既定では fastlane のレーン `submit_review` を実行。初回の IAP は API で同時に提出）
+4. Apple の審査通過後（`PENDING_DEVELOPER_RELEASE`）、人間が `app-factory approve publish`、続けて Claude が `app-factory release publish`（レーン `release_version`）
 
 強制の仕組み（多層）:
 - **スクリプト**: `approve` は TTY 必須で、Claude Code 内（`CLAUDECODE`）からは拒否します。確認フレーズの入力が必要です。承認は readiness ダイジェスト（ビルド・メタデータ・スクショ・IAP・ASC 状態）に束縛され、リポジトリ外の鍵（`~/.config/ios-app-factory/approver.key`、0600）で HMAC 署名され、期限（既定 72 時間）が切れると無効です。`release submit|publish` は毎回 readiness を再計算して検証します。
-- **Hooks**: Claude による `approve` / `evidence` の実行、承認なしの `release submit|publish`、`reviewSubmissions` 等への直接 API 呼び出し、`fastlane deliver`/`submit_for_review`/`automatic_release`、承認ファイル・台帳・状態・ゲート結果の編集、承認鍵の参照をすべてブロックします。
+- **fastlane レーン**: `submit_review` / `release_version` は、レーンの中でも `app-factory release verify-approval` を呼んで承認を再確認します。承認がなければ何も送らずに失敗します（レーンを直接起動しても同じです）。
+- **Hooks**: Claude による `approve` / `evidence` の実行、承認なしの `release submit|publish`、`reviewSubmissions` 等への直接 API 呼び出し、fastlane のリリース系レーン・`deliver` の直接実行、`submit_for_review: true`/`automatic_release: true`、承認ファイル・台帳・状態・ゲート結果の編集、承認鍵の参照をすべてブロックします。
 - ASC の同期 Plan には提出・公開系エンドポイントを入れられません（検証で拒否）。バージョンは常に手動リリースです。
 
 ## 設定リファレンス
@@ -339,6 +360,7 @@ API で設定できないため人間が行うもの: App のプライバシー�
 | `asc.app_id`, `price_base_territory`, `remote_fixture` | null, `USA`, null | |
 | `screenshots.devices` | `["iphone_6_9"]` | `iphone_6_9`(1320×2868, APP_IPHONE_67), `iphone_6_5`, `ipad_13` |
 | `screenshots.fonts` | {} | 例 `{"ja": "/System/Library/Fonts/ヒラギノ角ゴシック W6.ttc"}` |
+| `release.backend` | `fastlane` | リリース処理の手段。`api` を明示した場合だけ ASC API クライアントで行う（IAP・価格は常に API） |
 | `release.require_manual_purchase_test` | true | 人による課金テスト記録を必須にする |
 | `release.approval_ttl_hours` | 72 | 承認の有効期限 |
 | `testing.max_partial_reruns` | 2 | 全件実行 1 回あたりの、失敗ケースのみの再実行の上限 |
@@ -355,7 +377,7 @@ API で設定できないため人間が行うもの: App のプライバシー�
 ```bash
 cd plugins/ios-app-factory
 python3 -m pip install -r requirements-dev.txt
-python3 -m pytest -q                        # 138 tests
+python3 -m pytest -q                        # 149 tests
 claude plugin validate --strict .           # マニフェスト・Skills・Agents・Hooks の検証
 ```
 
@@ -374,6 +396,10 @@ claude plugin validate --strict .           # マニフェスト・Skills・Agen
 | シミュレーターが見つからない | `xcrun simctl list devices available` で名前を確認し `FACTORY_SIMULATOR="iPhone 16 Pro Max"` |
 | `font ... lacks glyphs for ja` | 日本語フォントを `screenshots.fonts.ja` に指定（Linux: `fonts-noto-cjk`） |
 | `App record ... not found` | App Store Connect でアプリを作成し、Bundle ID を確認。必要なら `asc.app_id` を設定 |
+| `fastlane not found` | アプリのリポジトリで `bundle install`（雛形の Gemfile）、または `brew install fastlane` |
+| `fastlane <lane> failed (exit N, log ...)` | `.factory-tmp/logs/fastlane-<lane>-*.log` を確認（エラー末尾はマスク済みで表示されます）。修正後に同じコマンドを再実行すれば、成功済みの操作は再送されません |
+| `Run release lanes only through app-factory` | Hook がレーンの直接実行を止めています。`app-factory asc apply` / `testflight verify` / `release submit|publish` を使ってください |
+| fastlane ではなく API で処理したい | `factory/config.json` で `"release": {"backend": "api"}` を指定 |
 | `HTTP 401`（ASC） | キー ID・Issuer ID・.p8 の組み合わせ、キーの権限（App Manager 以上）、システム時刻を確認 |
 | `HTTP 409`（ASC） | 既に存在するか、編集できない状態のバージョンです。`asc plan` で差分を確認。台帳により二重作成はされません |
 | `uncertain` が台帳に残る | 次回の `asc apply` が照合（GET）してから続行します。手動での台帳編集は不要です（Hook で禁止） |
@@ -396,8 +422,9 @@ claude plugin validate --strict .           # マニフェスト・Skills・Agen
 
 ## 検証状況と制約
 
-- この環境（Linux）で実行・検証したもの: Python エンジン、全ゲート、ASC の Plan・検証、シミュレーターへの適用・クラッシュ復旧・冪等性、承認と Hooks、スクリーンショット合成（Noto CJK）、アイコン描画、サポートページの生成と記録、全 138 テスト、`claude plugin validate --strict`。
+- この環境（Linux）で実行・検証したもの: Python エンジン、全ゲート、ASC の Plan・検証、シミュレーターへの適用・クラッシュ復旧・冪等性、承認と Hooks、スクリーンショット合成（Noto CJK）、アイコン描画、サポートページの生成と記録、全 149 テスト、`claude plugin validate --strict`。
 - Notion への実際の投稿は、MCP ツールを使う Claude の手順（Skill）として実装しています。Notion MCP を接続した環境での実投稿はまだ試していません（テストでは公開 URL の確認を代替しています）。
+- fastlane バックエンド: 雛形の Fastfile は実際の fastlane 2.241.2 で読み込めることと、5 つのレーンが定義されていることをテストで確認しています。`deliver` の画面サイズ表・メタデータのファイル名・Spaceship のメソッドも 2.241.2 のソースで確認しました。レーンの動作そのものは、App Store Connect シミュレーター上で動く代替の fastlane を使ってテストしており、本番の App Store Connect に対してはまだ実行していません。
 - **macOS / Xcode が必要なため、ここでは実行できていないもの**: SwiftUI 雛形のコンパイル、XCTest/XCUITest の実行、シミュレーターでの撮影、Fastlane での TestFlight アップロード、実際の App Store Connect への書き込み。雛形の Swift コードと `scripts/xcode/*.sh` は、初回は Mac で `build.sh` → `test.sh` を流して確認してください（失敗はそれぞれのゲートで検出されます）。
 - App Store Connect API の仕様は Apple 公式ドキュメント（JWT ES256、`/v1`・`/v2` の JSON:API リソース、スクリーンショットの予約→アップロード→コミット、`reviewSubmissions`）に基づいています。ただし内蔵シミュレーターは Apple のサーバー側検証を再現しません。初回の本番適用前に、必ずライブ読み取りの dry-run（資格情報ありの `asc plan`）で差分を確認してください。
 - スクリーンショットの既定は 6.9 インチ iPhone（1320×2868、`APP_IPHONE_67`）です。iPad 対応アプリは `ipad_13` を追加してください。
