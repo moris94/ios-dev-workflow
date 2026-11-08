@@ -82,7 +82,7 @@ plugins/ios-app-factory/
 ├── scripts/xcode/*.sh                  # OS 依存操作（xcodegen/xcodebuild/simctl/fastlane）
 ├── templates/ios-app/                  # SwiftUI + SwiftData + StoreKit 2 アプリ雛形（XcodeGen）
 ├── examples/sample-app/                # 成果物の形式例（テスト用フィクスチャ）
-└── tests/                              # pytest（149 件）
+└── tests/                              # pytest（150 件）
 docs/ARCHITECTURE.md                    # 設計書
 ```
 
@@ -124,6 +124,23 @@ xcode-select --install
 brew install xcodegen
 gem install bundler          # 雛形の Gemfile で fastlane を固定
 ```
+
+### アップデート（インストール済みの場合）
+
+Claude Code でマーケットプレイスの情報を更新してから、プラグインを更新し、Claude Code を再起動します。
+
+```
+/plugin marketplace update ios-dev-workflow
+/plugin update ios-app-factory@ios-dev-workflow
+```
+
+ターミナルからは `claude plugin marketplace update ios-dev-workflow` → `claude plugin update ios-app-factory@ios-dev-workflow` でも同じです。いずれも **再起動後に反映** されます。`/plugin` の画面で、プラグインのバージョンが上がっていることを確認してください。`--plugin-dir` でローカルの clone を読み込んでいる場合は、`git pull` して再起動するだけです。
+
+既存のアプリのリポジトリで 0.3.0 に上げたときの注意:
+- **Fastfile**: 雛形の Fastfile は自動では上書きされません。新しいレーン（`sync_metadata` / `build_status` / `submit_review` / `release_version`）を入れるため、`app-factory scaffold --only fastlane/Fastfile` を実行してください（ほかのファイルには触れません）。独自に編集していた場合は、差分を確認してから取り込んでください。
+- **リリースのバックエンド**: `release.backend` がない設定は fastlane として扱われます。これまでどおり API で処理したい場合は、`"release": {"backend": "api"}` を追記します。
+- **新しい工程**: `ux_review`（UI/UX の事前承認）、`support_page`、`app_icon` が増え、`implementation` 以降がこれらに依存するようになりました。進行中のプロジェクトでは `app-factory status` で `implementation` 以降が `stale` になります。新しい工程を通してから再検証してください（`/ios-app-factory:factory resume`）。
+- Python の依存パッケージは変わっていないので、`app-factory setup` をやり直す必要はありません。
 
 ## 初期設定
 
@@ -377,7 +394,7 @@ API でも fastlane でも設定できないため人間が行うもの: App の
 ```bash
 cd plugins/ios-app-factory
 python3 -m pip install -r requirements-dev.txt
-python3 -m pytest -q                        # 149 tests
+python3 -m pytest -q                        # 150 tests
 claude plugin validate --strict .           # マニフェスト・Skills・Agents・Hooks の検証
 ```
 
@@ -422,7 +439,7 @@ claude plugin validate --strict .           # マニフェスト・Skills・Agen
 
 ## 検証状況と制約
 
-- この環境（Linux）で実行・検証したもの: Python エンジン、全ゲート、ASC の Plan・検証、シミュレーターへの適用・クラッシュ復旧・冪等性、承認と Hooks、スクリーンショット合成（Noto CJK）、アイコン描画、サポートページの生成と記録、全 149 テスト、`claude plugin validate --strict`。
+- この環境（Linux）で実行・検証したもの: Python エンジン、全ゲート、ASC の Plan・検証、シミュレーターへの適用・クラッシュ復旧・冪等性、承認と Hooks、スクリーンショット合成（Noto CJK）、アイコン描画、サポートページの生成と記録、全 150 テスト、`claude plugin validate --strict`。
 - Notion への実際の投稿は、MCP ツールを使う Claude の手順（Skill）として実装しています。Notion MCP を接続した環境での実投稿はまだ試していません（テストでは公開 URL の確認を代替しています）。
 - fastlane バックエンド: 雛形の Fastfile は実際の fastlane 2.241.2 で読み込めることと、5 つのレーンが定義されていることをテストで確認しています。`deliver` の画面サイズ表・メタデータのファイル名・Spaceship のメソッドも 2.241.2 のソースで確認しました。レーンの動作そのものは、App Store Connect シミュレーター上で動く代替の fastlane を使ってテストしており、本番の App Store Connect に対してはまだ実行していません。
 - **macOS / Xcode が必要なため、ここでは実行できていないもの**: SwiftUI 雛形のコンパイル、XCTest/XCUITest の実行、シミュレーターでの撮影、Fastlane での TestFlight アップロード、実際の App Store Connect への書き込み。雛形の Swift コードと `scripts/xcode/*.sh` は、初回は Mac で `build.sh` → `test.sh` を流して確認してください（失敗はそれぞれのゲートで検出されます）。

@@ -55,7 +55,10 @@ def cmd_init(args):
 def cmd_scaffold(args):
     from .scaffold import scaffold
 
-    _out({"written": scaffold(_project(args), force=args.force)})
+    written = scaffold(_project(args), force=args.force, only=args.only)
+    if args.only and set(args.only) - set(written):
+        raise SystemExit(f"not in the template: {sorted(set(args.only) - set(written))}")
+    _out({"written": written})
 
 
 def cmd_status(args):
@@ -472,6 +475,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     s = sub.add_parser("scaffold", help="render the SwiftUI/SwiftData/StoreKit 2 template")
     s.add_argument("--force", action="store_true")
+    s.add_argument("--only", nargs="+", metavar="PATH", help="re-render only these files (overwrites), e.g. fastlane/Fastfile")
     s.set_defaults(fn=cmd_scaffold)
 
     s = sub.add_parser("status")
