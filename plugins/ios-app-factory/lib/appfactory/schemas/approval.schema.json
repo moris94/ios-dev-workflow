@@ -18,7 +18,8 @@
     "kind": {
       "enum": [
         "submit",
-        "publish"
+        "publish",
+        "ux"
       ]
     },
     "readiness_digest": {

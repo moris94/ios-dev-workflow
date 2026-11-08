@@ -28,28 +28,33 @@ ALWAYS_DENY = [
      "Direct App Store Connect submission/release calls are forbidden; use `app-factory release submit|publish` after human approval."),
     (re.compile(r"(curl|http|wget|python\d?\s+-c).*api\.appstoreconnect\.apple\.com", re.I),
      "Direct App Store Connect API calls are not allowed; use `app-factory asc ...` (ledger-protected, redacted)."),
-    (re.compile(r"\bfastlane\b.*\b(deliver|upload_to_app_store|appstore|release|submit_for_review|precheck_and_submit)\b"),
-     "fastlane deliver/submit lanes are disabled; metadata goes through `app-factory asc`, submission through `app-factory release submit` after human approval."),
+    (re.compile(r"\bfastlane\b.*\b(deliver|upload_to_app_store|appstore|release|submit_for_review|precheck_and_submit|"
+                r"sync_metadata|submit_review|release_version|build_status)\b"),
+     "Run release lanes only through app-factory: `app-factory asc apply` (metadata/screenshots), "
+     "`app-factory testflight verify`, and `app-factory release submit|publish` after human approval."),
     (re.compile(r"submit_for_review\s*[:=]\s*true|automatic_release\s*[:=]\s*true|distribute_external\s*[:=]\s*true", re.I),
      "Automatic submission/release/external distribution flags are forbidden."),
     (re.compile(r"approver\.key"), "The approver key is private to the human approver."),
     (re.compile(r"(\bcat|\bless|\bmore|\bhead|\btail|\bbase64|\bxxd|\bod|\bstrings|\bcp|\bscp|\bcurl)\b[^|;&]*\.p8\b"),
      "Reading or copying App Store Connect private keys is not allowed."),
-    (re.compile(r"(echo|printf|print)[^|;&]*\$\{?(ASC_PRIVATE_KEY|ASC_PRIVATE_KEY_BASE64|FASTLANE_PASSWORD|MATCH_PASSWORD|APP_STORE_CONNECT_API_KEY_CONTENT)\b"),
+    (re.compile(r"(echo|printf|print)[^|;&]*\$\{?(ASC_KEY_CONTENT_BASE64|FASTLANE_PASSWORD|MATCH_PASSWORD|APP_STORE_CONNECT_API_KEY_CONTENT)\b"),
      "Printing secrets is not allowed."),
+    (re.compile(r"\$\{?ASC_KEY_CONTENT_BASE64\b|\bASC_KEY_CONTENT_BASE64="),
+     "The App Store Connect key (ASC_KEY_CONTENT_BASE64) is read only by app-factory and the bundled scripts; "
+     "don't reference, decode or set it in commands."),
     (re.compile(r"^\s*(printenv|env|set|export\s+-p|declare\s+-x)\s*($|\|)"), "Dumping the environment would expose secrets."),
 ]
 PROTECTED_PATHS = re.compile(
     r"(factory/approvals/|factory/state\.json|factory/history\.jsonl|factory/gates/|factory/asc/ledger[\w.]*\.json|"
     r"factory/asc/sync-report\.json|factory/reports/(purchase-test|submission|release|testflight)\.json|"
-    r"factory/artifacts/release/readiness\.json|\.factory-tmp/locks)"
+    r"factory/artifacts/release/readiness\.json|factory/artifacts/support_page/publication\.json|\.factory-tmp/locks)"
 )
 MUTATING = re.compile(r"(>|\btee\b|\bcp\b|\bmv\b|\brm\b|\bsed\s+-i|\btouch\b|\bpython\d?\b|\bperl\b|\bchmod\b|\bln\b|\btruncate\b|\bdd\b|\bjq\b.*>)")
 GIT_TMP = re.compile(r"(\.factory-tmp|\.xcresult|DerivedData|\.p8$|(^|/)\.env|xcuserdata|\.ipa$)")
 
 MACHINE_OWNED = PROTECTED_PATHS
-GENERATED = re.compile(r"(App/Sources/Design/DesignTokens\.swift|App/Sources/Store/ProductCatalog\.swift|App/Resources/Products\.storekit|"
-                       r"factory/screenshots/(manifest\.json|final/.*)|factory/asc/plan\.json|factory/reports/(build|tests)\.json)$")
+GENERATED = re.compile(r"(App/Sources/Design/DesignTokens\.swift|App/Sources/Store/ProductCatalog\.swift|App/Resources/Products\.storekit|App/Resources/Assets\.xcassets/AppIcon\.appiconset/.*|"
+                       r"factory/screenshots/(manifest\.json|final/.*)|factory/artifacts/ux/storyboards/.*|factory/asc/plan\.json|factory/reports/(build|tests)\.json)$")
 
 
 def _deny(reason: str) -> int:
@@ -137,7 +142,7 @@ def guard_files(payload: dict) -> int:
         return _deny(f"{rel} is machine-owned (state, gates, approvals, ledger, evidence). Use `app-factory` commands.")
     if GENERATED.search(rel):
         return _deny(f"{rel} is generated. Edit the source artifact and run the generator "
-                     "(`app-factory codegen`, `screenshots render`, `asc plan`, or scripts/xcode/*.sh).")
+                     "(`app-factory codegen`, `icon render`, `ux render`, `screenshots render`, `asc plan`, or scripts/xcode/*.sh).")
     return 0
 
 

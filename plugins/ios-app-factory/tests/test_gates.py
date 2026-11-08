@@ -5,7 +5,7 @@ import pytest
 from appfactory.engine import Engine
 from appfactory.gates import run_gate
 from appfactory.jsonio import read_json, write_json_atomic
-from conftest import copy_artifacts, pass_stage
+from conftest import copy_artifacts, pass_planning, pass_stage
 
 
 def _gate(project, stage):
@@ -19,9 +19,8 @@ def _failed_ids(report):
 
 @pytest.fixture
 def planned(project):
-    copy_artifacts(project, "research", "proposal", "charter", "mvp", "design", "aso")
-    for st in ("research", "proposal", "charter", "mvp", "design"):
-        pass_stage(project, st)
+    pass_planning(project, until="support_page")
+    copy_artifacts(project, "aso")
     return project
 
 

@@ -1,0 +1,148 @@
+{
+  "app_name": "Stillnote",
+  "concept": {
+    "name": "Leaf of paper",
+    "metaphor": "A single quiet sheet of paper resting in a forest clearing, its corner folded like a leaf.",
+    "rationale": "One sheet = one thought captured (P1 two-tap capture); no badges or noise (P2 calm by default). Forest gradient and paper tones come directly from the Forest Paper design concept.",
+    "derived_from_principles": [
+      "P1",
+      "P2"
+    ],
+    "design_concept": "Forest Paper"
+  },
+  "aso": {
+    "category": "PRODUCTIVITY",
+    "keywords_reflected": [
+      "notebook",
+      "calm"
+    ],
+    "differentiation": "Productivity note apps mostly use yellow legal pads, pencils or blue/indigo squares; a deep forest field with a single pale sheet stands apart in search results.",
+    "small_size_strategy": "One large high-contrast silhouette (pale sheet on deep green) with only two text lines as detail, so it still reads at 60px."
+  },
+  "references": [
+    {
+      "type": "guideline",
+      "name": "Apple HIG — App icons",
+      "source": "https://developer.apple.com/design/human-interface-guidelines/app-icons",
+      "how_used": "Simple single focus point, no text, opaque background, provided dark and tinted appearances."
+    },
+    {
+      "type": "skill",
+      "name": "frontend-design",
+      "source": "anthropics/skills",
+      "how_used": "Checked the motif against the subject matter instead of generic note-app defaults."
+    }
+  ],
+  "avoided": [
+    "yellow legal pad",
+    "pencil glyph",
+    "indigo gradient square",
+    "app name lettering"
+  ],
+  "background": {
+    "type": "gradient",
+    "colors": [
+      "#2F7D63",
+      "#1E5A47"
+    ],
+    "angle": 160
+  },
+  "dark_background": {
+    "type": "solid",
+    "colors": [
+      "#141716"
+    ]
+  },
+  "layers": [
+    {
+      "shape": "rounded_rect",
+      "role": "glyph",
+      "box": [
+        0.29,
+        0.2,
+        0.71,
+        0.8
+      ],
+      "corner": 0.05,
+      "fill": "#F7F8F5",
+      "dark_fill": "#7BCCAC",
+      "note": "the sheet"
+    },
+    {
+      "shape": "polygon",
+      "role": "accent",
+      "points": [
+        [
+          0.6,
+          0.2
+        ],
+        [
+          0.71,
+          0.2
+        ],
+        [
+          0.71,
+          0.31
+        ]
+      ],
+      "fill": "#1E5A47",
+      "dark_fill": "#141716",
+      "note": "folded corner cut"
+    },
+    {
+      "shape": "polygon",
+      "role": "accent",
+      "points": [
+        [
+          0.6,
+          0.2
+        ],
+        [
+          0.6,
+          0.31
+        ],
+        [
+          0.71,
+          0.31
+        ]
+      ],
+      "fill": "#D9DEDB",
+      "dark_fill": "#ADB8B3",
+      "note": "fold"
+    },
+    {
+      "shape": "line",
+      "role": "detail",
+      "points": [
+        [
+          0.37,
+          0.45
+        ],
+        [
+          0.63,
+          0.45
+        ]
+      ],
+      "width": 0.035,
+      "fill": "#206A53",
+      "dark_fill": "#141716"
+    },
+    {
+      "shape": "line",
+      "role": "detail",
+      "points": [
+        [
+          0.37,
+          0.56
+        ],
+        [
+          0.55,
+          0.56
+        ]
+      ],
+      "width": 0.035,
+      "fill": "#206A53",
+      "dark_fill": "#141716"
+    }
+  ]
+}

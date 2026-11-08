@@ -55,7 +55,10 @@ def cmd_init(args):
 def cmd_scaffold(args):
     from .scaffold import scaffold
 
-    _out({"written": scaffold(_project(args), force=args.force)})
+    written = scaffold(_project(args), force=args.force, only=args.only)
+    if args.only and set(args.only) - set(written):
+        raise SystemExit(f"not in the template: {sorted(set(args.only) - set(written))}")
+    _out({"written": written})
 
 
 def cmd_status(args):
@@ -193,10 +196,23 @@ def cmd_report(args):
     if args.kind == "build":
         _out(write_build_report(project, args.status, args.scheme, args.configuration, args.destination, args.started_at,
                                 log=args.log or "", xcode_version=args.xcode_version or "", warnings=args.warnings, errors=args.errors))
+    elif args.kind == "rerun-plan":
+        from .reports import rerun_plan
+
+        plan = rerun_plan(project, args.reason)
+        if args.locale:  # one -only-testing argument per line, for test.sh
+            print("\n".join(f"-only-testing:{i}" for i in plan.get(args.locale, [])))
+        else:
+            _out(plan)
     else:
-        per_locale = dict(item.split("=", 1) for item in args.results)
-        rep = write_test_report(project, {k: Path(v) for k, v in per_locale.items()}, args.destination or "", args.xcode_version or "")
-        _out({k: rep[k] for k in ("status", "totals", "suites", "locales_tested")})
+        from .reports import write_rerun_report
+
+        per_locale = {k: Path(v) for k, v in (item.split("=", 1) for item in args.results)}
+        if args.rerun:
+            rep = write_rerun_report(project, per_locale, args.reason, args.note or "")
+        else:
+            rep = write_test_report(project, per_locale, args.destination or "", args.xcode_version or "")
+        _out({k: rep[k] for k in ("status", "totals", "suites", "locales_tested", "flaky")})
         return 0 if rep["status"] == "passed" else 2
 
 
@@ -217,6 +233,72 @@ def cmd_screenshots(args):
 
         cfg = project.config()
         _out({d: DEVICES[d] for d in cfg["screenshots"]["devices"]})
+
+
+XCODE_SCRIPTS = {"build": "build.sh", "test": "test.sh", "capture": "capture_screenshots.sh",
+                 "testflight": "testflight_upload.sh"}
+
+
+def cmd_xcode(args):
+    """Run the macOS scripts (so one permission rule, `Bash(app-factory *)`, covers them)."""
+    from .project import PLUGIN_ROOT
+
+    project = _project(args)
+    script = PLUGIN_ROOT / "scripts" / "xcode" / XCODE_SCRIPTS[args.action]
+    env = dict(os.environ, APP_FACTORY_PROJECT=str(project.root))
+    return subprocess.call(["bash", str(script), *args.script_args], cwd=project.root, env=env)
+
+
+def cmd_ux(args):
+    from . import ux
+
+    project = _project(args)
+    if args.action == "render":
+        _out(ux.render(project))
+    else:
+        from . import approval
+
+        ok, msg = approval.verify(project, "ux", ux.ux_digest(project))
+        _out({"storyboards": [project.rel(p) for p in ux.board_paths(project)], "ux_digest": ux.ux_digest(project),
+              "approved": ok, "approval": msg})
+
+
+def cmd_icon(args):
+    from . import icon
+
+    project = _project(args)
+    if args.action == "render":
+        _out(icon.render(project))
+    else:
+        from .jsonio import read_json
+
+        path = icon.preview_sheet(project)
+        spec = read_json(project.artifact("app_icon", "icon.json"))
+        _out({"preview": project.rel(path), "coverage_64px": icon.foreground_coverage(spec, project.root)})
+
+
+def cmd_support_page(args):
+    from . import support_page as sp
+
+    project = _project(args)
+    if args.action == "status":
+        _out({"links_user_specified": sp.links_user_specified(project),
+              "email_env_set": bool(os.environ.get(sp.EMAIL_ENV)), "email_env": sp.EMAIL_ENV,
+              "page_drafted": project.artifact("support_page", sp.PAGE).exists()})
+    elif args.action == "draft":
+        if sp.links_user_specified(project) and not args.force:
+            raise SystemExit("config app.links already points to your own pages; use `support-page use-existing` "
+                             "(or --force to generate a page anyway)")
+        sp.draft(project)
+        _out({"page": project.rel(project.artifact("support_page", sp.PAGE))})
+    elif args.action == "render":
+        _out(sp.render(project))
+    elif args.action == "record":
+        if not args.url:
+            raise SystemExit("--url is required")
+        _out(sp.record(project, args.url, args.provider, verify=not args.no_verify, notion_page_id=args.notion_page_id))
+    elif args.action == "use-existing":
+        _out(sp.use_existing(project))
 
 
 def cmd_asc(args):
@@ -280,6 +362,13 @@ def cmd_release(args):
         _out(release.submit(project, dry_run=args.dry_run, simulate=args.simulate))
     elif args.action == "publish":
         _out(release.publish(project, dry_run=args.dry_run, simulate=args.simulate))
+    elif args.action == "verify-approval":
+        try:
+            release.verify_approval(project, args.kind)
+        except release.ReleaseError as exc:
+            log(str(exc), level="error")
+            return 3
+        _out({"approved": args.kind})
     elif args.action == "simulate-apple-approval":
         release.simulate_apple_approval(project)
         _out({"simulated_state": "PENDING_DEVELOPER_RELEASE"})
@@ -291,6 +380,21 @@ def cmd_approve(args):
     from .release import READINESS, compute_readiness
 
     project = _project(args)
+    if args.kind == "ux":
+        from . import ux
+
+        changed = [k for k, v in ux.render(project).items() if v != "unchanged"]
+        if changed:
+            print("note: storyboards were re-rendered from ux.json: " + ", ".join(changed))
+        subject = ux.approval_subject(project)
+        if not subject["readiness_digest"] or not ux.board_paths(project):
+            raise SystemExit("no UX storyboards yet: the ux_review stage must produce ux.json and run `app-factory ux render`")
+        print("Open and review the storyboards before approving:")
+        for p in ux.board_paths(project):
+            print(f"  {p}")
+        rec = approval.create(project, "ux", subject, approver=args.approver, note=args.note or "")
+        _out({"approved": "ux", "expires_at": rec["expires_at"]})
+        return
     readiness = read_json(project.root / READINESS)
     if not readiness:
         raise SystemExit("run `app-factory release readiness` first")
@@ -315,7 +419,13 @@ def cmd_doctor(args):
         checks[f"tool:{tool}"] = "ok" if shutil.which(tool) else "missing"
     from .asc.auth import credentials_present
 
-    checks["env:asc_credentials"] = "present" if credentials_present() else "absent (dry-run only)"
+    from .asc.auth import missing_env
+
+    checks["env:asc_credentials"] = "present" if credentials_present() else \
+        "absent (dry-run only): missing " + ", ".join(missing_env())
+    checks["env:FACTORY_SUPPORT_EMAIL"] = "set" if os.environ.get("FACTORY_SUPPORT_EMAIL") else \
+        "missing (needed to publish the support/privacy page)"
+    checks["env:FACTORY_NOTION_PARENT_PAGE"] = "set" if os.environ.get("FACTORY_NOTION_PARENT_PAGE") else "unset (optional)"
     try:
         project = Project.find(Path(args.project) if args.project else None)
         checks["project"] = str(project.root)
@@ -358,8 +468,14 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--force", action="store_true")
     s.set_defaults(fn=cmd_init)
 
+    s = sub.add_parser("xcode", help="macOS: build | test | capture | testflight (runs scripts/xcode/*.sh)")
+    s.add_argument("action", choices=sorted(XCODE_SCRIPTS))
+    s.add_argument("script_args", nargs=argparse.REMAINDER)
+    s.set_defaults(fn=cmd_xcode)
+
     s = sub.add_parser("scaffold", help="render the SwiftUI/SwiftData/StoreKit 2 template")
     s.add_argument("--force", action="store_true")
+    s.add_argument("--only", nargs="+", metavar="PATH", help="re-render only these files (overwrites), e.g. fastlane/Fastfile")
     s.set_defaults(fn=cmd_scaffold)
 
     s = sub.add_parser("status")
@@ -412,6 +528,12 @@ def build_parser() -> argparse.ArgumentParser:
     t.add_argument("results", nargs="+", help="LOCALE=path/to/test-results.json")
     t.add_argument("--destination")
     t.add_argument("--xcode-version")
+    t.add_argument("--rerun", action="store_true", help="merge a partial re-run of failed cases into the last report")
+    t.add_argument("--reason", choices=["environment", "test-defect"])
+    t.add_argument("--note", help="why the failure was environmental / a test defect (required with --rerun)")
+    rp = rs.add_parser("rerun-plan", help="tests a partial re-run must execute")
+    rp.add_argument("--reason", required=True, choices=["environment", "test-defect"])
+    rp.add_argument("--locale")
     s.set_defaults(fn=cmd_report)
 
     s = sub.add_parser("screenshots")
@@ -420,6 +542,23 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--locale")
     s.add_argument("--device")
     s.set_defaults(fn=cmd_screenshots)
+
+    s = sub.add_parser("ux", help="representative use-case storyboards for human UI/UX approval")
+    s.add_argument("action", choices=["render", "status"])
+    s.set_defaults(fn=cmd_ux)
+
+    s = sub.add_parser("icon", help="render the app icon set from icon.json / preview at home-screen sizes")
+    s.add_argument("action", choices=["render", "preview"])
+    s.set_defaults(fn=cmd_icon)
+
+    s = sub.add_parser("support-page", help="combined support + privacy policy page (en/ja)")
+    s.add_argument("action", choices=["status", "draft", "render", "record", "use-existing"])
+    s.add_argument("--url", help="published public URL (record)")
+    s.add_argument("--provider", choices=["notion", "manual"], default="notion")
+    s.add_argument("--no-verify", action="store_true", help="skip the HTTP reachability check")
+    s.add_argument("--notion-page-id", help="Notion page id (so later runs update instead of duplicating)")
+    s.add_argument("--force", action="store_true")
+    s.set_defaults(fn=cmd_support_page)
 
     s = sub.add_parser("asc", help="App Store Connect sync (never submits)")
     s.add_argument("action", choices=["plan", "apply"])
@@ -437,13 +576,14 @@ def build_parser() -> argparse.ArgumentParser:
     s.set_defaults(fn=cmd_evidence)
 
     s = sub.add_parser("release")
-    s.add_argument("action", choices=["readiness", "submit", "publish", "simulate-apple-approval"])
+    s.add_argument("action", choices=["readiness", "submit", "publish", "verify-approval", "simulate-apple-approval"])
+    s.add_argument("kind", nargs="?", choices=["submit", "publish"], help="for verify-approval")
     s.add_argument("--dry-run", action="store_true")
     s.add_argument("--simulate", action="store_true")
     s.set_defaults(fn=cmd_release)
 
     s = sub.add_parser("approve", help="HUMAN ONLY: approve submission/publication (interactive terminal)")
-    s.add_argument("kind", choices=["submit", "publish"])
+    s.add_argument("kind", choices=["ux", "submit", "publish"])
     s.add_argument("--approver")
     s.add_argument("--note")
     s.set_defaults(fn=cmd_approve)

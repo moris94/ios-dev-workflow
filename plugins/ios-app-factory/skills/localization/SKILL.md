@@ -10,7 +10,7 @@ Outputs: `App/Resources/Localizable.xcstrings`, `App/Resources/InfoPlist.xcstrin
 
 ## Steps
 1. Make sure the catalog contains every key used in code. On macOS, building the project extracts keys
-   (`scripts/xcode/build.sh`); otherwise add entries manually. The gate scans Swift for
+   (`app-factory xcode build`); otherwise add entries manually. The gate scans Swift for
    `Text("…")`, `Button("…")`, `Label`, `Toggle`, `navigationTitle`, `String(localized:)`, `accessibilityLabel` … literals
    and fails on any key missing from the catalog.
 2. For each key: `en` source (the key itself or an explicit `en` stringUnit) and a `ja` stringUnit with

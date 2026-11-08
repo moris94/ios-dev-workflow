@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Optional, Tuple
 
 from . import approval
+from . import fastlane_release as fl
 from .asc import auth
 from .asc.client import Client, HttpTransport
 from .asc.executor import Executor, describe
@@ -63,19 +64,43 @@ def sync(project: Project, apply: bool = False, simulate: bool = False, fixture:
     snapshot, kind = _snapshot(project, client, fixture)
     mode = "apply" if apply else "dry-run"
     plan = build_plan(desired, snapshot, kind, mode)
-    errors = validate_plan(plan)
-    write_json_atomic(project.asc_dir / "plan.json", plan)
-    log(describe(plan))
-    report = {"at": now_iso(), "mode": mode, "simulated": simulate, "remote_snapshot": kind,
-              "desired_digest": plan["desired_digest"], "plan_digest": sha256_json(plan["operations"]),
+    errors = validate_plan(plan)  # validates every value (lengths, types) whichever backend uploads it
+    backend = fl.backend(project)
+    api_ops = plan["operations"]
+    files: dict = {}
+    if backend == "fastlane":
+        files = fl.deliver_files(project, desired)
+        api_ops = [o for o in plan["operations"] if fl.api_kept(o["kind"])]
+        delegated = [o for o in plan["operations"] if not fl.api_kept(o["kind"])]
+        written = dict(plan, operations=api_ops, backend="fastlane",
+                       fastlane={"lane": fl.LANES["sync"], "digest": fl.digest(files), "files": sorted(files),
+                                 "delegated": [o["description"] for o in delegated]})
+    else:
+        written = dict(plan, backend="api")
+    write_json_atomic(project.asc_dir / "plan.json", written)
+    log(describe(written))
+    if backend == "fastlane":
+        log(f"fastlane {fl.LANES['sync']} (deliver): {len(files)} files, digest {written['fastlane']['digest'][:12]} — "
+            f"covers {len(written['fastlane']['delegated'])} change(s): metadata, screenshots, category, releaseType MANUAL")
+    report = {"at": now_iso(), "backend": backend, "mode": mode, "simulated": simulate, "remote_snapshot": kind,
+              "desired_digest": plan["desired_digest"], "plan_digest": sha256_json(written["operations"]),
               "operations": len(plan["operations"]), "validation_errors": errors, "blocking": plan["blocking"]}
+    if backend == "fastlane":
+        report["fastlane"] = {"digest": written["fastlane"]["digest"], "lane": fl.LANES["sync"], "status": "planned"}
     if errors:
         write_json_atomic(project.asc_dir / "sync-report.json", report)
         raise ReleaseError("plan validation failed:\n  " + "\n  ".join(errors))
     if apply:
         ledger = Ledger(project.asc_dir / ("ledger.simulated.json" if simulate else "ledger.json"))
-        stats = Executor(client, ledger, project.root, snapshot).apply(plan)
-        # Verify: re-read remote state; a converged sync re-plans to zero operations.
+        if backend == "api" or simulate:
+            # api backend, or rehearsal: the simulator stands in for deliver's effects as well
+            stats = Executor(client, ledger, project.root, snapshot).apply(plan)
+            if backend == "fastlane":
+                report["fastlane"]["status"] = "simulated"
+        else:
+            stats = Executor(client, ledger, project.root, snapshot).apply(dict(plan, operations=api_ops))
+            report["fastlane"]["status"] = _deliver_metadata(project, desired, files, client, ledger)
+        # Verify: re-read remote state; a converged sync re-plans to zero operations (deliver's work included).
         after, _ = _snapshot(project, client, None)
         remaining = build_plan(desired, after, "live", "apply")["operations"]
         report.update({"stats": stats, "requests_sent": client.requests_sent, "verify_noop": not remaining,
@@ -85,9 +110,43 @@ def sync(project: Project, apply: bool = False, simulate: bool = False, fixture:
     return report
 
 
+def _deliver_metadata(project: Project, desired: dict, files: dict, client: Client, ledger: Ledger) -> str:
+    """Run `deliver` unless the same content was already delivered and the remote still matches."""
+    digest = fl.digest(files)
+    op = {"key": sha256_json({"lane": fl.LANES["sync"], "digest": digest,
+                              "version": desired["version"]["versionString"]})[:24],
+          "kind": "fastlane.sync_metadata", "target": f"version:{desired['version']['versionString']}"}
+    if ledger.is_applied(op["key"]):
+        current, _ = _snapshot(project, client, None)
+        drift = [o for o in build_plan(desired, current, "live", "apply")["operations"] if not fl.api_kept(o["kind"])]
+        if not drift:
+            log("deliver: identical content already delivered and remote unchanged — not re-sent")
+            return "skipped_ledger"
+        log(f"deliver: remote drifted from the delivered content ({len(drift)} difference(s)) — re-delivering")
+    tree = fl.write_tree(project, files)
+    try:
+        fl.run_lane(project, fl.LANES["sync"], {"FACTORY_METADATA_PATH": tree["metadata_path"],
+                                                 "FACTORY_SCREENSHOTS_PATH": tree["screenshots_path"],
+                                                 "FACTORY_DELIVER_DIGEST": digest})
+    except fl.FastlaneError as exc:
+        ledger.record(op, "failed", note=str(exc))
+        raise
+    ledger.record(op, "applied")
+    return "applied"
+
+
 # ---------------------------------------------------------------- testflight
 def testflight_verify(project: Project, simulate: bool = False, build_id_hint: Optional[str] = None) -> dict:
     cfg = project.config()
+    if fl.backend(project) == "fastlane" and not simulate:
+        r = fl.run_lane(project, fl.LANES["status"], {})
+        tests = read_json(project.reports / "tests.json") or {}
+        report = {"backend": "fastlane", "version": r["version"], "build_number": str(r["build_number"]),
+                  "build_id": r["build_id"], "processing_state": r["processing_state"], "uploaded_at": now_iso(),
+                  "uses_non_exempt_encryption": r.get("uses_non_exempt_encryption"),
+                  "source_digest": tests.get("source_digest") or source_digest(project.root), "simulated": False}
+        write_json_atomic(project.reports / "testflight.json", report)
+        return report
     client, kind = make_client(project, simulate)
     snap, _ = _snapshot(project, client, None)
     if not snap.get("app"):
@@ -194,9 +253,11 @@ def _require_approval(project: Project, kind: str) -> dict:
 
 def submit(project: Project, dry_run: bool = False, simulate: bool = False) -> dict:
     if not dry_run:
-        _require_approval(project, "submit")
+        readiness = _require_approval(project, "submit")
     elif not simulate:
         log("dry-run: approval not checked; no request will be sent")
+    if fl.backend(project) == "fastlane" and not simulate:
+        return _submit_fastlane(project, dry_run, readiness if not dry_run else None)
     tf = read_json(project.reports / "testflight.json") or {}
     client = None
     snap = empty_snapshot()
@@ -209,12 +270,7 @@ def submit(project: Project, dry_run: bool = False, simulate: bool = False) -> d
              {"data": {"type": "appStoreVersions", "id": "{ref:version}",
                        "relationships": {"build": {"data": {"type": "builds", "id": tf.get("build_id") or "{ref:build}"}}}}},
              f"Attach build {tf.get('build_number')} to version")
-    for pid, iap in snap.get("iaps", {}).items():
-        if iap.get("state") == "READY_TO_SUBMIT":
-            plan.add("submit.iap", f"iap_submit:{pid}", "POST", "/v1/inAppPurchaseSubmissions",
-                     {"data": {"type": "inAppPurchaseSubmissions",
-                               "relationships": {"inAppPurchaseV2": {"data": {"type": "inAppPurchases", "id": "{ref:iap.%s}" % pid}}}}},
-                     f"Submit IAP {pid} with this version")
+    plan.ops.extend(_iap_submission_ops(snap).ops)
     plan.add("submit.review_submission", "review_submission", "POST", "/v1/reviewSubmissions",
              {"data": {"type": "reviewSubmissions", "attributes": {"platform": "IOS"},
                        "relationships": {"app": {"data": {"type": "apps", "id": "{ref:app}"}}}}},
@@ -242,12 +298,74 @@ def submit(project: Project, dry_run: bool = False, simulate: bool = False) -> d
     return out
 
 
+def _iap_submission_ops(snap: dict) -> Plan:
+    plan = Plan()
+    for pid, iap in snap.get("iaps", {}).items():
+        if iap.get("state") == "READY_TO_SUBMIT":
+            plan.add("submit.iap", f"iap_submit:{pid}", "POST", "/v1/inAppPurchaseSubmissions",
+                     {"data": {"type": "inAppPurchaseSubmissions",
+                               "relationships": {"inAppPurchaseV2": {"data": {"type": "inAppPurchases", "id": "{ref:iap.%s}" % pid}}}}},
+                     f"Submit IAP {pid} with this version (App Store Connect API: not supported by fastlane)")
+    return plan
+
+
+def _submit_fastlane(project: Project, dry_run: bool, readiness: Optional[dict]) -> dict:
+    cfg = project.config()
+    snap = empty_snapshot()
+    client = None
+    if not dry_run or auth.credentials_present():
+        client, _ = make_client(project, False)
+        snap = fetch_snapshot(client, cfg["app"]["bundle_id"], cfg["app"]["version"], cfg.get("asc", {}).get("app_id"))
+    iap_plan = _iap_submission_ops(snap)
+    lane_desc = (f"fastlane {fl.LANES['submit']}: deliver submit_for_review (version {cfg['app']['version']}, "
+                 f"build {cfg['app']['build_number']}, automatic_release false)")
+    if dry_run:
+        return {"dry_run": True, "backend": "fastlane", "operations": [o["description"] for o in iap_plan.ops] + [lane_desc]}
+    ledger = Ledger(project.asc_dir / "ledger.json")
+    stats = Executor(client, ledger, project.root, snap, scope="submit").apply({"operations": iap_plan.ops, "blocking": []})
+    op = {"key": sha256_json({"lane": fl.LANES["submit"], "readiness": readiness["readiness_digest"]})[:24],
+          "kind": "fastlane.submit_review", "target": f"version:{cfg['app']['version']}"}
+    previous = read_json(project.reports / "submission.json")
+    if ledger.is_applied(op["key"]) and previous:
+        log("submission already sent for this readiness — not re-sent")
+        return previous
+    try:
+        result = fl.run_lane(project, fl.LANES["submit"], {})
+    except fl.FastlaneError as exc:
+        # deliver may have created the submission before failing: never assume it is safe to resend blindly
+        ledger.record(op, "uncertain", note=str(exc), scope="submit")
+        raise
+    ledger.record(op, "applied", result_id=result.get("review_submission_id"), scope="submit")
+    out = {"backend": "fastlane", "submitted": bool(result.get("submitted")), "submitted_at": now_iso(),
+           "review_submission_id": result.get("review_submission_id"), "version_id": result.get("version_id"),
+           "build_number": str(cfg["app"]["build_number"]), "iap_stats": stats, "simulated": False,
+           "readiness_digest": readiness["readiness_digest"]}
+    write_json_atomic(project.reports / "submission.json", out)
+    return out
+
+
 def publish(project: Project, dry_run: bool = False, simulate: bool = False) -> dict:
     if not dry_run:
         _require_approval(project, "publish")
     sub = read_json(project.reports / "submission.json")
     if not sub:
         raise ReleaseError("not submitted yet")
+    if fl.backend(project) == "fastlane" and not simulate:
+        if dry_run:
+            return {"dry_run": True, "backend": "fastlane",
+                    "operations": [f"fastlane {fl.LANES['publish']}: release request for the version pending developer release"]}
+        ledger = Ledger(project.asc_dir / "ledger.json")
+        op = {"key": sha256_json({"lane": fl.LANES["publish"], "version_id": sub.get("version_id"),
+                                  "version": project.config()["app"]["version"]})[:24],
+              "kind": "fastlane.release_version", "target": f"version:{project.config()['app']['version']}"}
+        if ledger.is_applied(op["key"]) and read_json(project.reports / "release.json"):
+            return read_json(project.reports / "release.json")
+        result = fl.run_lane(project, fl.LANES["publish"], {})
+        ledger.record(op, "applied", result_id=result.get("version_id"), scope="publish")
+        out = {"backend": "fastlane", "released": bool(result.get("released")), "released_at": now_iso(),
+               "version_id": result.get("version_id"), "simulated": False}
+        write_json_atomic(project.reports / "release.json", out)
+        return out
     if dry_run:
         return {"dry_run": True, "operations": ["POST /v1/appStoreVersionReleaseRequests (after Apple approval)"]}
     client, _ = make_client(project, simulate)
@@ -268,6 +386,11 @@ def publish(project: Project, dry_run: bool = False, simulate: bool = False) -> 
     return out
 
 
+def verify_approval(project: Project, kind: str) -> dict:
+    """Used by the fastlane submit/release lanes to re-check the human approval (fail closed)."""
+    return _require_approval(project, kind)
+
+
 def simulate_apple_approval(project: Project) -> None:
     """Test helper for --simulate: pretend App Review approved the version."""
     fake = FakeASC(project.tmp / "fake-asc.json", bundle_id=project.config()["app"]["bundle_id"])
@@ -276,5 +399,5 @@ def simulate_apple_approval(project: Project) -> None:
 
 def env_summary() -> dict:
     return {"asc_credentials": auth.credentials_present(),
-            "asc_key_path_set": bool(os.environ.get("ASC_PRIVATE_KEY_PATH")),
+            "asc_missing_env": auth.missing_env(),
             "approver_key_exists": approval.key_path().exists()}

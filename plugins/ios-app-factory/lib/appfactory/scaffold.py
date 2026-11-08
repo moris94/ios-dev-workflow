@@ -47,7 +47,8 @@ def default_config(name: str, bundle_id: str, team_id: str = None) -> dict:
         "research": {"min_competitors": 5, "min_sources": 8},
         "asc": {"mode": "dry-run", "app_id": None, "price_base_territory": "USA", "remote_fixture": None},
         "screenshots": {"devices": ["iphone_6_9"], "fonts": {}},
-        "release": {"require_manual_purchase_test": True, "approval_ttl_hours": 72, "release_type": "MANUAL"},
+        "release": {"backend": "fastlane", "require_manual_purchase_test": True, "approval_ttl_hours": 72, "release_type": "MANUAL"},
+        "testing": {"max_partial_reruns": 2},
         "locks": {"stale_after_minutes": 30},
     }
 
@@ -87,7 +88,9 @@ def _render(text: str, values: Dict[str, str]) -> str:
     return text
 
 
-def scaffold(project: Project, force: bool = False) -> List[str]:
+def scaffold(project: Project, force: bool = False, only: List[str] = None) -> List[str]:
+    """Render the app template. ``only`` limits it to the given repo-relative paths (always overwritten),
+    e.g. ``["fastlane/Fastfile"]`` after a plugin update."""
     cfg = project.config()["app"]
     values = {
         "__APP_NAME__": cfg["name"],
@@ -107,7 +110,10 @@ def scaffold(project: Project, force: bool = False) -> List[str]:
         if rel.name.endswith(".tmpl"):
             rel = rel.with_name(rel.name[:-5])
         dest = project.root / rel
-        if dest.exists() and not force:
+        if only is not None:
+            if rel.as_posix() not in only:
+                continue
+        elif dest.exists() and not force:
             continue
         dest.parent.mkdir(parents=True, exist_ok=True)
         if src.suffix in TEXT_SUFFIXES or src.name.endswith(".tmpl"):

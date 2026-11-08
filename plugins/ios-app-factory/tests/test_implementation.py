@@ -5,14 +5,12 @@ from appfactory.hashing import source_digest
 from appfactory.jsonio import read_json
 from appfactory.reports import write_build_report
 from appfactory.scaffold import scaffold
-from conftest import copy_artifacts, pass_stage, run
+from conftest import copy_artifacts, pass_planning, pass_stage, run
 
 
 def _prepare(project):
-    copy_artifacts(project, "research", "proposal", "charter", "mvp", "design")
-    for st in ("research", "proposal", "charter", "mvp", "design"):
-        pass_stage(project, st)
     scaffold(project)
+    pass_planning(project)
     codegen.generate(project)
 
 
@@ -35,7 +33,7 @@ def test_codegen_outputs(project):
     assert "static let accent = dynamic(RGB(0.1255, 0.4157, 0.3255)" in tokens
     catalog = (project.root / codegen.PRODUCT_CATALOG).read_text()
     assert '"com.example.stillnote.pro"' in catalog and 'proFeatureIDs: Set<String> = ["F3"]' in catalog
-    assert "fixtures.example.org/stillnote/privacy" in (project.root / codegen.APP_LINKS).read_text()
+    assert "fixtures.example.org/stillnote/help" in (project.root / codegen.APP_LINKS).read_text()
     sk = read_json(project.root / codegen.STOREKIT_CONFIG)
     assert sk["products"][0]["type"] == "NonConsumable" and sk["products"][0]["displayPrice"] == "4.99"
     assert codegen.generate(project)[codegen.DESIGN_TOKENS] == "unchanged"  # idempotent
@@ -88,3 +86,14 @@ def test_test_report_parsing(project, tmp_path):
     rep = write_test_report(project, {"en-US": f, "ja": f})
     assert rep["status"] == "failed" and rep["suites"]["unit"]["passed"] == 10 and rep["suites"]["ui"]["failed"] == 2
     assert rep["source_digest"] == source_digest(project.root)
+
+
+def test_scaffold_only_refreshes_named_file(project, capsys):
+    scaffold(project)
+    fastfile = project.root / "fastlane/Fastfile"
+    home = project.root / "App/Sources/Features/Home/HomeView.swift"
+    fastfile.write_text("old lanes")
+    home.write_text("// customised app code")
+    assert run(project.root, "scaffold", "--only", "fastlane/Fastfile") == 0
+    assert "lane :submit_review" in fastfile.read_text() and "com.example.stillnote" in fastfile.read_text()
+    assert home.read_text() == "// customised app code"      # nothing else touched

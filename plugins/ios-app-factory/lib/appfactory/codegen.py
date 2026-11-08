@@ -108,33 +108,7 @@ def app_links_swift(config: dict) -> str:
     return "".join(lines)
 
 
-def app_icon_png(design: dict, app_name: str) -> bytes:
-    """Placeholder-quality but on-brand 1024px icon (RGB, no alpha); replace with a designed icon any time."""
-    import io
-
-    from PIL import Image, ImageDraw, ImageFont
-
-    from .screenshots.compose import resolve_font
-
-    light = design["color"]["light"]
-    img = Image.new("RGB", (1024, 1024), hex_to_rgb(light["accent"]))
-    draw = ImageDraw.Draw(img)
-    draw.ellipse((172, 172, 852, 852), fill=hex_to_rgb(light["background"]))
-    letter = (app_name.strip() or "A")[0].upper()
-    try:
-        font = ImageFont.truetype(resolve_font("en-US", {}), 520)
-    except Exception:  # noqa: BLE001
-        font = ImageFont.load_default()
-    w = draw.textlength(letter, font=font)
-    box = draw.textbbox((0, 0), letter, font=font)
-    draw.text(((1024 - w) / 2, (1024 - (box[3] + box[1])) / 2), letter, font=font, fill=hex_to_rgb(light["accent"]))
-    out = io.BytesIO()
-    img.save(out, format="PNG")
-    return out.getvalue()
-
-
 APP_LINKS = "App/Sources/App/AppLinks.swift"
-APP_ICON = "App/Resources/Assets.xcassets/AppIcon.appiconset/AppIcon-1024.png"
 
 
 def _stable_uuid(seed: str) -> str:
@@ -195,10 +169,4 @@ def generate(project: Project) -> Dict[str, str]:
             written[rel] = "updated"
         else:
             written[rel] = "unchanged"
-    design = read_json(project.artifact("design", "design.json"))
-    icon = project.root / APP_ICON
-    if design and not icon.exists():
-        icon.parent.mkdir(parents=True, exist_ok=True)
-        icon.write_bytes(app_icon_png(design, project.config()["app"]["name"]))
-        written[APP_ICON] = "created (placeholder; replace with a designed icon)"
     return written

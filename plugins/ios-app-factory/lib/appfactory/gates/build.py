@@ -4,6 +4,7 @@ from __future__ import annotations
 import re
 
 from .. import codegen
+from ..icon import APP_ICON
 from ..hashing import expand_globs, source_digest
 from ..schemas_util import validate
 from . import gate
@@ -53,7 +54,7 @@ def implementation_gate(ctx):
                           ("AppStore.sync", "restore purchases via AppStore.sync"),
                           (".finish()", "finishes transactions")]:
         ctx.check(f"storekit2.{needle}", needle in all_src, label)
-    icon = root / codegen.APP_ICON
+    icon = root / APP_ICON
     if icon.exists():
         from ..screenshots.compose import png_info
 
@@ -61,7 +62,7 @@ def implementation_gate(ctx):
         ctx.check("icon.format", (info["width"], info["height"]) == (1024, 1024) and not info["has_alpha"],
                   "App icon 1024x1024 without alpha")
     else:
-        ctx.check("icon.format", False, f"missing {codegen.APP_ICON} (run `app-factory codegen` or add a designed icon)")
+        ctx.check("icon.format", False, f"missing {APP_ICON} (app_icon stage: `app-factory icon render`)")
     ctx.check("swiftui.no-uikit-lifecycle", "UIApplicationMain" not in all_src and "@main" in all_src, "SwiftUI App lifecycle")
 
     mvp = ctx.load_json(MVP)
@@ -106,6 +107,13 @@ def testing_gate(ctx):
     if mvp:
         missing = [s["id"] for s in mvp["screenshot_scenes"] if f"\"{s['id']}\"" not in shots]
         ctx.check("uitests.screenshot-scenes", not missing, "ScreenshotTests capture every MVP scene", details=missing or None)
+    ux = ctx.load_json("factory/artifacts/ux/ux.json", required=False)
+    if ux:
+        ui_text = "\n".join(ui.values())
+        missing_uc = [u["id"] for u in ux["use_cases"] if not re.search(rf"\b{u['id']}\b", ui_text)]
+        ctx.check("uitests.use-cases", not missing_uc,
+                  "every approved representative use case is covered by a UI test (mark it `// UCn`)",
+                  details=missing_uc or None)
     if report is None:
         return
     errors = validate(report, "test_report")
@@ -124,4 +132,35 @@ def testing_gate(ctx):
     locales = set(report["locales_tested"])
     ctx.check("tests.locales", {"en-US", "ja"} <= locales or {"en", "ja"} <= locales, f"tests ran in locales {sorted(locales)}")
     ctx.check("tests.fresh", report["source_digest"] == source_digest(root),
-              "test report matches current sources (re-run scripts/xcode/test.sh)")
+              "test report matches current sources (re-run `app-factory xcode test`)")
+
+    # --- partial re-runs (only failed cases, environment / test-defect causes) -------------
+    from ..hashing import app_digest
+    from ..reports import RERUN_REASONS, max_partial_reruns
+
+    runs = report.get("runs") or []
+    ctx.check("tests.full-run", bool(runs) and runs[0]["kind"] == "full", "report is based on a full test run")
+    reruns = [r for r in runs if r["kind"] == "rerun"]
+    if runs and reruns:
+        limit = max_partial_reruns(ctx.project)
+        ok = len(reruns) <= limit and all(r.get("reason") in RERUN_REASONS and len(r.get("note", "").strip()) >= 10
+                                           for r in reruns)
+        ctx.check("tests.partial-reruns.policy", ok,
+                  f"{len(reruns)} partial re-run(s) (max {limit}), each with cause environment|test-defect and a note",
+                  details=[{k: r.get(k) for k in ("reason", "note", "at")} for r in reruns])
+        full_app = runs[0]["app_digest"]
+        ctx.check("tests.partial-reruns.app-unchanged",
+                  full_app == app_digest(root) and all(r.get("app_digest") == full_app for r in reruns),
+                  "app code is identical to the full run (an app fix always needs a full run)")
+        prev = runs[0]["source_digest"]
+        env_ok = True
+        for r in runs[1:]:
+            if r.get("reason") == "environment" and r.get("source_digest") != prev:
+                env_ok = False
+            prev = r.get("source_digest")
+        ctx.check("tests.partial-reruns.environment-unchanged", env_ok,
+                  "environment re-runs changed no source at all")
+        ctx.warn("tests.flaky", not report.get("flaky"), "tests that failed and then passed on an environment re-run",
+                 details=report.get("flaky") or None)
+        ctx.warn("tests.removed-failing", not report.get("removed_failing_tests"),
+                 "failing tests removed while fixing test code — review", details=report.get("removed_failing_tests") or None)

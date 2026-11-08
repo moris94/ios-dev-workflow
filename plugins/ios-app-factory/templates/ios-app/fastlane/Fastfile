@@ -1,21 +1,55 @@
 # ios-app-factory Fastfile
-# Only builds and uploads to TestFlight (internal). Metadata, screenshots, IAP and pricing are synced by
-# `app-factory asc`, and review submission/release happen only via `app-factory release` after human approval.
-# Do NOT add deliver/upload_to_app_store/submit_for_review lanes: the plugin hooks block them.
+#
+# Default release backend (factory/config.json release.backend = "fastlane").
+# These lanes are run by `app-factory` — not by hand and not by the agent (hooks block direct calls):
+#
+#   beta            app-factory xcode testflight      archive + upload to TestFlight (internal only)
+#   build_status    app-factory testflight verify     processing state of the uploaded build
+#   sync_metadata   app-factory asc apply             metadata + screenshots (deliver), releaseType MANUAL
+#   submit_review   app-factory release submit        submit for App Review   (requires human approval)
+#   release_version app-factory release publish       release an approved version (requires human approval)
+#
+# Every lane writes a machine-readable result to ENV["FACTORY_RESULT_FILE"].
+# submit_review / release_version re-verify the human approval themselves and fail closed.
+# Credentials: ASC_KEY_ID, ASC_ISSUER_ID, ASC_KEY_CONTENT_BASE64 (environment only).
+
+require "json"
 
 default_platform(:ios)
 
 platform :ios do
+  APP_ID = "__BUNDLE_ID__"
+
   def asc_api_key
     app_store_connect_api_key(
       key_id: ENV.fetch("ASC_KEY_ID"),
       issuer_id: ENV.fetch("ASC_ISSUER_ID"),
-      key_filepath: ENV.fetch("ASC_PRIVATE_KEY_PATH"),
+      key_content: ENV.fetch("ASC_KEY_CONTENT_BASE64"),
+      is_key_content_base64: true,
       duration: 1200,
-      in_house: false
+      in_house: false,
+      set_spaceship_token: true
     )
   end
 
+  def write_result(data)
+    path = ENV["FACTORY_RESULT_FILE"]
+    return if path.nil? || path.empty?
+    File.write(path, JSON.pretty_generate(data.merge("finished_at" => Time.now.utc.iso8601)))
+  end
+
+  def require_human_approval!(kind)
+    bin = ENV["APP_FACTORY_BIN"]
+    UI.user_error!("APP_FACTORY_BIN not set: run this lane through `app-factory release #{kind}`") if bin.nil? || bin.empty?
+    sh(bin, "release", "verify-approval", kind, log: false) # non-zero exit => lane fails, nothing is sent
+  end
+
+  def app_version
+    ENV.fetch("FACTORY_APP_VERSION")
+  end
+
+  # Run through `app-factory xcode testflight`, which provides FACTORY_ASC_KEY_FILE
+  # (a temporary 0600 copy of the key decoded from ASC_KEY_CONTENT_BASE64, deleted afterwards).
   desc "Archive and upload to TestFlight (internal testing only)"
   lane :beta do
     api_key = asc_api_key
@@ -27,7 +61,7 @@ platform :ios do
       output_directory: ".factory-tmp/build",
       derived_data_path: ".factory-tmp/DerivedData-archive",
       xcargs: "-allowProvisioningUpdates " \
-              "-authenticationKeyPath #{ENV.fetch('ASC_PRIVATE_KEY_PATH')} " \
+              "-authenticationKeyPath #{ENV.fetch('FACTORY_ASC_KEY_FILE')} " \
               "-authenticationKeyID #{ENV.fetch('ASC_KEY_ID')} " \
               "-authenticationKeyIssuerID #{ENV.fetch('ASC_ISSUER_ID')}",
       silent: true
@@ -38,5 +72,80 @@ platform :ios do
       skip_waiting_for_build_processing: true,
       distribute_external: false
     )
+  end
+
+  desc "Processing state of the build for FACTORY_APP_VERSION / FACTORY_BUILD_NUMBER"
+  lane :build_status do
+    asc_api_key
+    app = Spaceship::ConnectAPI::App.find(APP_ID) || UI.user_error!("App record #{APP_ID} not found")
+    build = Spaceship::ConnectAPI::Build.all(app_id: app.id, version: app_version,
+                                             build_number: ENV.fetch("FACTORY_BUILD_NUMBER")).first
+    UI.user_error!("build #{ENV['FACTORY_BUILD_NUMBER']} not found yet (still processing?)") if build.nil?
+    write_result("lane" => "build_status", "app_id" => app.id, "build_id" => build.id,
+                 "version" => app_version, "build_number" => build.version,
+                 "processing_state" => build.processing_state,
+                 "uses_non_exempt_encryption" => build.uses_non_exempt_encryption)
+  end
+
+  desc "Upload metadata and screenshots (never submits; release type MANUAL)"
+  lane :sync_metadata do
+    deliver(
+      api_key: asc_api_key,
+      app_identifier: APP_ID,
+      app_version: app_version,
+      metadata_path: ENV.fetch("FACTORY_METADATA_PATH"),
+      screenshots_path: ENV.fetch("FACTORY_SCREENSHOTS_PATH"),
+      skip_binary_upload: true,
+      skip_app_version_update: false,
+      overwrite_screenshots: true,
+      submit_for_review: false,
+      automatic_release: false,
+      phased_release: false,
+      run_precheck_before_submit: false,
+      precheck_include_in_app_purchases: false,
+      force: true
+    )
+    write_result("lane" => "sync_metadata", "status" => "success", "digest" => ENV.fetch("FACTORY_DELIVER_DIGEST"))
+  end
+
+  desc "Submit the version with the tested build for App Review (human approval required)"
+  lane :submit_review do
+    require_human_approval!("submit")
+    deliver(
+      api_key: asc_api_key,
+      app_identifier: APP_ID,
+      app_version: app_version,
+      build_number: ENV.fetch("FACTORY_BUILD_NUMBER"),
+      skip_binary_upload: true,
+      skip_metadata: true,
+      skip_screenshots: true,
+      submit_for_review: true,
+      automatic_release: false,
+      run_precheck_before_submit: false,
+      precheck_include_in_app_purchases: false,
+      submission_information: {
+        add_id_info_uses_idfa: false,
+        export_compliance_uses_encryption: false,
+        content_rights_contains_third_party_content: false
+      },
+      force: true
+    )
+    app = Spaceship::ConnectAPI::App.find(APP_ID)
+    submission = app.get_in_progress_review_submission(platform: Spaceship::ConnectAPI::Platform::IOS)
+    version = app.get_app_store_versions(filter: { versionString: app_version, platform: "IOS" }).first
+    write_result("lane" => "submit_review", "submitted" => true,
+                 "review_submission_id" => submission&.id, "version_id" => version&.id)
+  end
+
+  desc "Release the Apple-approved version (human approval required)"
+  lane :release_version do
+    require_human_approval!("publish")
+    asc_api_key
+    app = Spaceship::ConnectAPI::App.find(APP_ID)
+    version = app.get_pending_release_app_store_version(platform: Spaceship::ConnectAPI::Platform::IOS)
+    UI.user_error!("No version is pending developer release (has App Review approved it?)") if version.nil?
+    UI.user_error!("Pending version #{version.version_string} != #{app_version}") if version.version_string != app_version
+    version.create_app_store_version_release_request
+    write_result("lane" => "release_version", "released" => true, "version_id" => version.id)
   end
 end

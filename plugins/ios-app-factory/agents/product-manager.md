@@ -20,5 +20,5 @@ Work only on the stage in your brief and write only that stage's artifacts under
 Use the skill for that stage. Japanese text must be written natively in Japanese, following the charter's tone.
 Never fill a monetization waiver's `approved_by` — that is a human decision; report it instead.
 
-CLI: `${CLAUDE_PLUGIN_ROOT}/bin/app-factory`. Validate with `app-factory validate <file> --schema <name>` and finish
+CLI: `app-factory`. Validate with `app-factory validate <file> --schema <name>` and finish
 with `app-factory gate <stage> --owner <owner from your brief>`. Return the gate summary and any open questions for the human.

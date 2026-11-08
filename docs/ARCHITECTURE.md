@@ -40,7 +40,7 @@
 ```
 
 責務の分離:
-- **Skills** = 専門知識と手順（16 個。オーケストレーター、状態表示、工程ごとの専門 Skill、人間承認）
+- **Skills** = 専門知識と手順（19 個。オーケストレーター、状態表示、工程ごとの専門 Skill、人間承認）
 - **Subagents** = 役割とツール権限（6 個）。工程の Skill をプリロード
 - **エンジン（Python）** = 決定的な処理: 状態、ロック、ダイジェスト、ゲート、コード生成、合成、API 計画/実行、承認
 - **スクリプト（bash）** = OS 依存の外部操作（xcodegen、xcodebuild、simctl、xcresulttool、fastlane）
@@ -51,13 +51,18 @@
 各工程は `id, agent, skills, depends_on, inputs, outputs{include,exclude}, gate, human_approval` を持つ。出力の所有権は重ならない（例: `*.xcstrings` は localization のもので implementation からは除外、`AppUITests/` は testing のもの）。そのため、ある工程の作業が別の合格済み工程を無関係に stale にすることはない。
 
 ```
-research → proposal → charter → mvp → design → implementation → localization → testing
-                                   └────────────→ aso ───────────────┐            │
-                                                                     ▼            ▼
-                                                                screenshots ← (testing, design, aso)
-                                                                     ▼
-                                              asc_sync → testflight → release_readiness → submit → publish
+research → proposal → charter → mvp → design → ux_review(人間承認) → support_page → aso → app_icon
+                                                                        ↓
+                                   implementation → localization → testing
+                                                                      ↓
+                                                     screenshots ← (testing, design, aso)
+                                                          ↓
+                                   asc_sync → testflight → release_readiness → submit → publish
 ```
+
+- `ux_review`: 代表ユースケース（初回体験・中核タスク・課金など 3〜5 件）を手順とワイヤーフレームで定義し、デザインのパレットでストーリーボードを描画する。人間が `app-factory approve ux` で承認する（リリース承認と同じ仕組みで、ux.json とストーリーボードのダイジェストに結び付く）。implementation はこの工程に依存し、testing ゲートは各ユースケースが UI テストでカバーされていることを確認する。
+- `support_page`: 未指定ならサポート＋プライバシーポリシーを 1 ページ（英日）にまとめる。メールは `FACTORY_SUPPORT_EMAIL` から取り、コミットする下書きはプレースホルダーのまま。Notion MCP があれば Claude が投稿し、無ければ文面を表示して人間が投稿する。`support-page record` が URL を `app.links.support` と `privacy_policy` の両方に書き込み、ASO・`AppLinks.swift`・ASC が同じ URL を使う。
+- `app_icon`: デザイナーが文字なしのベクター仕様（`icon.json`）を書き、エンジンがライト/ダーク/ティントの 3 種を決定的に描画する。ゲートは憲章・デザイン・ASO との対応、パレット、コントラスト、64px での占有率、再描画の一致を確認する。アイコンのファイルはこの工程が所有し、implementation の出力から除外している。
 
 ## 3. 成果物（明示的な契約）
 
@@ -69,6 +74,8 @@ research → proposal → charter → mvp → design → implementation → loca
 | mvp.json | mvp | agent |
 | design.json | design | agent |
 | aso.json | aso | agent |
+| support_page/page.md, publication.json | support_publication | `support-page draft/record` |
+| app_icon/icon.json | app_icon | agent → `icon render` |
 | build.json / tests.json | build_report / test_report | scripts → `app-factory report` |
 | screenshots/manifest.json | screenshots_manifest | `screenshots render` |
 | asc/plan.json | asc_plan | `asc plan` |
@@ -93,6 +100,9 @@ research → proposal → charter → mvp → design → implementation → loca
 
 ## 6. App Store Connect 操作方針
 
+**リリースのバックエンド**: 既定は `release.backend = "fastlane"`。メタデータとスクリーンショットは `deliver`、TestFlight は `pilot`、ビルド状態・公開は Spaceship、審査提出は `deliver submit_for_review` で行う。レーンは `app-factory` が起動し、結果を JSON で受け取る。IAP・アプリ価格・IAP の初回提出は fastlane に対応機能がないため、ASC API を使う。`"api"` を明示した場合は、以下の自前 API クライアントですべてを処理する。どちらのバックエンドでも、計画・検証・台帳・収束確認の仕組みは共通。
+
+
 1. **望ましい状態を宣言**（`asc/state.py: desired_state`）: config + aso + mvp + screenshots manifest から作る
 2. **リモートの状態を正規化**（live GET / fixture / empty）
 3. **差分 → Plan**（`planner.py`）: 変わったフィールドだけ PATCH、無いものは POST、画像は MD5 で比較。操作には `{ref:…}`（前の操作で得た ID）と `{lookup:…}`（実行時の読み取り専用の解決: 価格ポイント・地域）のプレースホルダーを使う
@@ -103,6 +113,8 @@ research → proposal → charter → mvp → design → implementation → loca
 提出（`release submit`）と公開（`release publish`）は別モジュールで、同じ台帳（scope 付き）を使う。どちらも実行直前に readiness を再計算し、承認を検証する。
 
 ## 7. 人間承認
+
+承認の種類: `ux`（実装前の UI/UX、UX ダイジェストに結び付く）、`submit` / `publish`（リリース準備のダイジェストに結び付く）。
 
 | 層 | 仕組み |
 |---|---|
@@ -115,14 +127,18 @@ research → proposal → charter → mvp → design → implementation → loca
 
 ## 8. 機密情報とログ
 
-- 資格情報は環境変数からだけ読む（`ASC_*`）。値をファイルに書かない。
+- 資格情報は環境変数からだけ読む（`ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_CONTENT_BASE64`）。JWT はメモリ上で署名する。例外は `xcodebuild -authenticationKeyPath` 用の一時ファイルで、`.factory-tmp/asc-key/`（0600）に書き出し、スクリプト終了時に trap で削除する。
 - 出力はすべて `redact()` を通す。マスク対象は、秘密らしい名前の環境変数の値（`*_PATH` は除く）、PEM 秘密鍵、JWT、`Authorization: Bearer` の値。
 - 詳細ログは `.factory-tmp/logs/`（gitignore）だけに書く。fastlane のログもここに置き、失敗時の抜粋もマスクしてから表示する。
 - Hook が `.p8` の読み出し、秘密環境変数の echo、`printenv`/`env` を止める。
 
-## 9. テスト戦略
+## 9. 試験の部分再実行
+
+`tests.json` は `runs`（最初は全件実行、その後に部分再実行）を持ち、同じテスト ID とロケールについては最新の結果で統合する。部分再実行を許すのは、原因が `environment`（ソース無変更）か `test-defect`（アプリのダイジェスト＝`project.yml`＋`App/**` が全件実行時と同一で、変わったのはテストコードだけ）の場合に限る。`test-defect` では、変更されたテストクラスの全テストを両ロケールで再実行させる。回数の上限、原因のメモ、失敗ケースの網羅は、レポート作成時とゲートの両方で検証する。再実行でだけ通ったテストは flaky として警告にする。
+
+## 10. テスト戦略
 
 - 単体: engine / gates / l10n / codegen / screenshots / asc（planner, executor, ledger, JWT）/ approval / guards / redact
-- 統合: `test_e2e.py` が CLI で全 15 工程を通す（macOS 専用の手順はレポートを書くヘルパーで代替し、ASC は内蔵シミュレーターを使う）
+- 統合: `test_e2e.py` が CLI で全 18 工程を通す（macOS 専用の手順はレポートを書くヘルパーで代替し、ASC は内蔵シミュレーターを使う）
 - 構造: `test_plugin_structure.py` が pipeline ↔ agents ↔ skills ↔ gates ↔ schemas の参照整合性、フロントマター、実行権限、テンプレートのプレースホルダーを検証
 - 外部: `claude plugin validate --strict`

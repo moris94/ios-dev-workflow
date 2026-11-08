@@ -13,8 +13,13 @@ Nothing is submitted for review or released without an explicit human approval. 
 2. the approval is HMAC-signed with a key outside the repo, bound to the readiness digest, and expires
    (`release.approval_ttl_hours`, default 72h) — any change after approval invalidates it;
 3. PreToolUse hooks block the agent from running `approve`, from `release submit|publish` without a valid
-   approval, from direct App Store Connect submission calls, from fastlane deliver/submit, and from editing
-   approval/ledger/state files.
+   approval, from direct App Store Connect submission calls, from running fastlane release lanes or `deliver`
+   directly, and from editing approval/ledger/state files;
+4. with the default fastlane backend, the `submit_review` / `release_version` lanes call
+   `app-factory release verify-approval` themselves and abort without a valid approval.
+
+`app-factory release submit|publish` runs the fastlane lane (default) or the API (when `release.backend` is
+`"api"`). First-time in-app purchases are submitted through the API together with the version in both cases.
 
 Requested: `$ARGUMENTS`
 

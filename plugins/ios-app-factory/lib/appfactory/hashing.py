@@ -73,3 +73,16 @@ SOURCE_GLOBS = ["project.yml", "App/**/*", "AppTests/**/*", "AppUITests/**/*"]
 def source_digest(root: Path) -> str:
     """Digest of everything that affects the compiled app & tests."""
     return digest_files(root, SOURCE_GLOBS)["digest"]
+
+
+APP_GLOBS = ["project.yml", "App/**/*"]
+TEST_GLOBS = ["AppTests/**/*", "AppUITests/**/*"]
+
+
+def app_digest(root: Path) -> str:
+    """Digest of the app itself (no test code): unchanged app => an app fix did not happen."""
+    return digest_files(root, APP_GLOBS)["digest"]
+
+
+def test_file_digests(root: Path) -> dict:
+    return digest_files(root, TEST_GLOBS)["files"]

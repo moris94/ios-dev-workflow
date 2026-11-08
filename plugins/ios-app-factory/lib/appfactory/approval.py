@@ -1,5 +1,8 @@
 """Human approval for review submission and release.
 
+Kinds: ``ux`` (representative use-case UI/UX before implementation, bound to the UX digest),
+``submit`` and ``publish`` (bound to the release readiness digest).
+
 Enforced at three independent layers:
 
 1. ``app-factory approve`` only runs on an interactive terminal (stdin and
@@ -75,8 +78,8 @@ def is_interactive() -> bool:
 
 def create(project: Project, kind: str, readiness: dict, approver: Optional[str] = None, note: str = "",
            ask: Callable[[str], str] = input, interactive_check: Callable[[], bool] = is_interactive) -> dict:
-    if kind not in ("submit", "publish"):
-        raise ApprovalError("kind must be submit or publish")
+    if kind not in ("submit", "publish", "ux"):
+        raise ApprovalError("kind must be submit, publish or ux")
     if os.environ.get("CLAUDECODE") or os.environ.get("CLAUDE_CODE_ENTRYPOINT"):
         raise ApprovalError("approvals cannot be created from inside a Claude Code session; run this in your own terminal")
     if not interactive_check():

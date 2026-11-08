@@ -1,0 +1,300 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ios-app-factory/schemas/ux.schema.json",
+  "title": "Representative use cases (UI/UX)",
+  "type": "object",
+  "required": [
+    "use_cases",
+    "review_focus"
+  ],
+  "properties": {
+    "use_cases": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "kind",
+          "persona",
+          "trigger",
+          "goal",
+          "features",
+          "principle_ids",
+          "steps",
+          "success_criteria",
+          "edge_cases"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^UC[0-9]+$"
+          },
+          "title": {
+            "type": "object",
+            "required": [
+              "en-US",
+              "ja"
+            ],
+            "properties": {
+              "en-US": {
+                "type": "string",
+                "minLength": 1
+              },
+              "ja": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          },
+          "kind": {
+            "enum": [
+              "core",
+              "first_run",
+              "monetization",
+              "recovery",
+              "settings"
+            ]
+          },
+          "persona": {
+            "type": "string",
+            "minLength": 1
+          },
+          "trigger": {
+            "type": "string",
+            "minLength": 1
+          },
+          "goal": {
+            "type": "string",
+            "minLength": 1
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^F[0-9]+$"
+            },
+            "minItems": 1
+          },
+          "principle_ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^P[0-9]+$"
+            },
+            "minItems": 1
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "screen",
+                "action",
+                "expected",
+                "wireframe"
+              ],
+              "properties": {
+                "screen": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "action": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "expected": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "copy": {
+                  "type": "object",
+                  "required": [
+                    "en-US",
+                    "ja"
+                  ],
+                  "properties": {
+                    "en-US": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "ja": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                },
+                "wireframe": {
+                  "type": "object",
+                  "required": [
+                    "title",
+                    "components"
+                  ],
+                  "properties": {
+                    "title": {
+                      "type": "string"
+                    },
+                    "presentation": {
+                      "enum": [
+                        "push",
+                        "sheet",
+                        "root"
+                      ]
+                    },
+                    "nav": {
+                      "type": "object",
+                      "properties": {
+                        "leading": {
+                          "type": "string"
+                        },
+                        "trailing": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "components": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "type"
+                        ],
+                        "properties": {
+                          "type": {
+                            "enum": [
+                              "text",
+                              "list",
+                              "button",
+                              "field",
+                              "toggle",
+                              "card",
+                              "empty",
+                              "segmented",
+                              "price",
+                              "image",
+                              "divider"
+                            ]
+                          },
+                          "text": {
+                            "type": "string"
+                          },
+                          "style": {
+                            "enum": [
+                              "title",
+                              "headline",
+                              "body",
+                              "caption",
+                              "primary",
+                              "secondary",
+                              "link"
+                            ]
+                          },
+                          "rows": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "required": [
+                                "title"
+                              ],
+                              "properties": {
+                                "title": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "subtitle": {
+                                  "type": "string"
+                                },
+                                "accessory": {
+                                  "type": "string"
+                                }
+                              }
+                            },
+                            "maxItems": 8
+                          },
+                          "items": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "maxItems": 6
+                          },
+                          "selected": {
+                            "type": "integer"
+                          },
+                          "on": {
+                            "type": "boolean"
+                          },
+                          "lines": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "maxItems": 6
+                          },
+                          "id": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "minItems": 1,
+                      "maxItems": 10
+                    },
+                    "tap": {
+                      "oneOf": [
+                        {
+                          "type": "integer",
+                          "minimum": 0
+                        },
+                        {
+                          "enum": [
+                            "leading",
+                            "trailing"
+                          ]
+                        }
+                      ],
+                      "description": "index of the component the user acts on, or a navigation bar item"
+                    }
+                  }
+                }
+              }
+            },
+            "minItems": 2,
+            "maxItems": 8
+          },
+          "success_criteria": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1
+          },
+          "edge_cases": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "minLength": 1
+            },
+            "minItems": 1
+          }
+        }
+      },
+      "minItems": 3,
+      "maxItems": 5
+    },
+    "review_focus": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "description": "What the human reviewer should judge / open questions"
+    },
+    "design_notes": {
+      "type": "string"
+    }
+  }
+}

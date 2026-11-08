@@ -26,11 +26,26 @@ Outputs: `AppUITests/**`, `factory/reports/tests.json` (written by the script).
 
 ## Run
 ```
-"${CLAUDE_PLUGIN_ROOT}/scripts/xcode/test.sh"            # unit + UI tests, en-US and ja → factory/reports/tests.json
+app-factory xcode test            # unit + UI tests, en-US and ja → factory/reports/tests.json
 ```
 The script runs `xcodebuild test` per language (`-testLanguage en|ja -testRegion US|JP`), exports results with
 `xcrun xcresulttool get test-results tests` and calls `app-factory report tests en-US=… ja=…`.
 
 Gate: report valid, zero failures, ≥5 unit and ≥2 UI tests passed, purchase/entitlement/paywall tests passed,
-both locales tested, report matches current sources, screenshot scenes covered.
-When a test fails because of an app bug, fix the app (that re-opens `implementation`, which must re-pass its gate).
+both locales tested, report matches current sources, screenshot scenes covered; with partial re-runs also: based on a
+full run, app code identical to it, environment re-runs changed nothing, causes/notes recorded, within the limit.
+## Re-running after a failure — classify the cause first
+Read the failure (log in `.factory-tmp/logs/test-<locale>.log`, xcresult) and decide:
+
+| cause | what to do | re-run |
+|---|---|---|
+| **app bug** (app behaves wrongly) | fix `App/**` (re-opens `implementation`) | **full**: `app-factory xcode test` |
+| **environment** (simulator boot/launch timeout, springboard crash, Xcode/runner hiccup — no code at fault) | change nothing | `app-factory xcode test --only-failed --reason environment --note "<what happened>"` |
+| **test defect** (wrong identifier, missing wait, wrong assertion in `AppTests/`/`AppUITests/`) | fix only the test code | `app-factory xcode test --only-failed --reason test-defect --note "<what was wrong>"` |
+
+A partial re-run runs only the failed cases (for `test-defect` also every test of the changed test classes, in
+both locales) and merges them into `factory/reports/tests.json`. It is refused when `App/**` or `project.yml`
+changed since the full run, when `environment` is claimed but sources changed, after `testing.max_partial_reruns`
+(default 2) partial re-runs, or without a note. `app-factory report rerun-plan --reason <cause>` shows what will run.
+Tests that pass only on an environment re-run are listed as **flaky** (gate warning) — mention them in your report.
+Never weaken an assertion just to make it pass, and never delete a failing test (removals are flagged).

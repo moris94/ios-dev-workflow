@@ -12,7 +12,8 @@ from appfactory import approval
 from appfactory.engine import Engine
 from appfactory.jsonio import read_json, write_json_atomic
 from appfactory.release import compute_readiness
-from conftest import copy_artifacts, run, run_json
+from appfactory import support_page
+from conftest import HELP_URL, copy_artifacts, human_approves_ux, run, run_json
 from helpers_sim import fake_build, fake_raw_captures, fake_tests
 
 OWNER = "session-e2e"
@@ -49,6 +50,39 @@ def test_full_pipeline_rehearsal(project, capsys, tmp_path, monkeypatch):
         copy_artifacts(project, stage)
         gate(project, capsys, stage)
 
+    # Representative use cases: storyboards, then the human's UI/UX approval (before any implementation)
+    rc, nxt = run_json(root, capsys, "next")
+    assert nxt["id"] == "ux_review" and nxt["human_approval"] == "ux"
+    start(project, capsys, "ux_review")
+    copy_artifacts(project, "ux")
+    assert run(root, "ux", "render") == 0
+    rc, _ = run_json(root, capsys, "gate", "ux_review", "--owner", OWNER)
+    assert rc == 2                                    # not approved yet → implementation can't start
+    human_approves_ux(project)
+    gate(project, capsys, "ux_review")
+
+    # Support + privacy page: one combined page, e-mail from the environment, published (Notion simulated)
+    monkeypatch.setenv("FACTORY_SUPPORT_EMAIL", "help@stillnote.example")
+    monkeypatch.setattr(support_page, "check_url", lambda url, timeout=15: 200)
+    cfg = project.config()
+    cfg["app"]["links"]["support"] = cfg["app"]["links"]["privacy_policy"] = None
+    write_json_atomic(project.config_path, cfg)
+    start(project, capsys, "support_page")
+    assert run(root, "support-page", "draft") == 0
+    rc, rendered = run_json(root, capsys, "support-page", "render")
+    assert "help@stillnote.example" in (root / rendered["rendered"]).read_text()
+    assert run(root, "support-page", "record", "--url", HELP_URL, "--provider", "notion") == 0
+    gate(project, capsys, "support_page")
+
+    start(project, capsys, "aso")
+    copy_artifacts(project, "aso")
+    gate(project, capsys, "aso")
+
+    start(project, capsys, "app_icon")
+    copy_artifacts(project, "app_icon")
+    assert run(root, "icon", "render") == 0
+    gate(project, capsys, "app_icon")
+
     # Phase C: implementation, localization, testing
     start(project, capsys, "implementation")
     assert run(root, "codegen") == 0
@@ -60,10 +94,7 @@ def test_full_pipeline_rehearsal(project, capsys, tmp_path, monkeypatch):
     fake_tests(project, tmp_path)
     gate(project, capsys, "testing")
 
-    # Phase D: ASO, screenshots, App Store Connect (dry-run first)
-    start(project, capsys, "aso")
-    copy_artifacts(project, "aso")
-    gate(project, capsys, "aso")
+    # Phase D: screenshots, App Store Connect (dry-run first)
     start(project, capsys, "screenshots")
     fake_raw_captures(project)
     assert run(root, "screenshots", "render") == 0
@@ -111,7 +142,8 @@ def test_full_pipeline_rehearsal(project, capsys, tmp_path, monkeypatch):
     assert run(root, "release", "submit", "--simulate") == 1
     assert "HUMAN APPROVAL REQUIRED" in capsys.readouterr().err
     rc, dry = run_json(root, capsys, "release", "submit", "--dry-run")
-    assert dry["dry_run"] is True and any("Submit for App Review" in o for o in dry["operations"])
+    assert dry["dry_run"] is True and dry["backend"] == "fastlane"
+    assert any("submit_for_review" in o for o in dry["operations"])
     # ... and the gate fails too
     rc, _ = run_json(root, capsys, "gate", "submit", "--owner", OWNER)
     assert rc == 2
