@@ -155,3 +155,18 @@ def test_hook_allows_publish_under_single_release_approval(project):
     cfg["approval"]["single_release_approval"] = False
     write_json_atomic(project.config_path, cfg)
     assert guards.guard_bash(payload) == 2
+
+
+def test_readiness_not_rewritten_when_unchanged(project, monkeypatch):
+    """Regression: re-writing readiness.json with a new timestamp made release_readiness stale
+    (CI failure on main when `approval request submit` ran a second later than the gate)."""
+    from appfactory import release
+
+    times = iter(["2026-11-09T01:00:00Z", "2026-11-09T01:00:05Z"])
+    monkeypatch.setattr(release, "now_iso", lambda: next(times))
+    first = release.write_readiness(project)
+    path = project.root / release.READINESS
+    before = path.read_bytes()
+    second = release.write_readiness(project)
+    assert second["readiness_digest"] == first["readiness_digest"]
+    assert path.read_bytes() == before
