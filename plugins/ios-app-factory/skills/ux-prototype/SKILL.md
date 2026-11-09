@@ -39,14 +39,11 @@ app-factory ux render     # → factory/artifacts/ux/storyboards/UCn.png
 Open every storyboard with the Read tool. Check against the charter: number of taps, clarity of the first-run screen,
 honest paywall, consistent wording in both languages. Put the decisions the human should weigh in `review_focus`.
 
-## 4. Human approval (required — you cannot do this)
-Report to the orchestrator: storyboard paths, one line per use case, and `review_focus`. The orchestrator shows them
-to the human, who either asks for changes (revise ux.json → render again) or approves in **their own terminal**:
-```
-app-factory approve ux
-```
-The approval is bound to the exact ux.json + storyboards. Any later change invalidates it and needs a new approval.
-`app-factory ux status` shows whether the current storyboards are approved.
+## 4. Human approval (in the chat — you cannot give it)
+Report to the orchestrator: storyboard paths, one line per use case, and `review_focus`. The orchestrator shows them,
+runs `app-factory approval request ux`, and the human either asks for changes (revise ux.json → render again) or
+replies 「承認 UX」 in the conversation; the plugin's hook records that reply. The approval is bound to the exact
+ux.json + storyboards; any later change needs a new approval. `app-factory ux status` shows whether it is approved.
 
 Gate (`app-factory gate ux_review`): schema; screens/features/principles exist; all must features covered; first-run,
 core and (with IAP) monetization use cases present; paywall shows Restore Purchases; Japanese copy is Japanese; tap

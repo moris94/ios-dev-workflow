@@ -47,7 +47,9 @@ def default_config(name: str, bundle_id: str, team_id: str = None) -> dict:
         "research": {"min_competitors": 5, "min_sources": 8},
         "asc": {"mode": "dry-run", "app_id": None, "price_base_territory": "USA", "remote_fixture": None},
         "screenshots": {"devices": ["iphone_6_9"], "fonts": {}},
-        "release": {"backend": "fastlane", "require_manual_purchase_test": True, "approval_ttl_hours": 72, "release_type": "MANUAL"},
+        "quality": {"profile": "mvp"},
+        "approval": {"mode": "chat", "single_release_approval": True},
+        "release": {"backend": "fastlane", "require_manual_purchase_test": False, "approval_ttl_hours": 72, "release_type": "MANUAL"},
         "testing": {"max_partial_reruns": 2},
         "locks": {"stale_after_minutes": 30},
     }

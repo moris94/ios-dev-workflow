@@ -5,7 +5,7 @@ import pytest
 from appfactory.engine import Engine
 from appfactory.gates import run_gate
 from appfactory.jsonio import read_json, write_json_atomic
-from conftest import copy_artifacts, pass_planning, pass_stage
+from conftest import copy_artifacts, pass_planning, pass_stage, set_profile
 
 
 def _gate(project, stage):
@@ -58,6 +58,7 @@ def test_mvp_requires_monetization_or_human_waiver(planned):
 
 
 def test_mvp_subscription_needs_justification_and_prefix(planned):
+    set_profile(planned, "strict")
     p = planned.artifact("mvp", "mvp.json")
     d = read_json(p)
     d["monetization"]["model"] = "subscription"
@@ -69,6 +70,7 @@ def test_mvp_subscription_needs_justification_and_prefix(planned):
 
 
 def test_design_contrast_and_cliche_detected(planned):
+    set_profile(planned, "strict")
     p = planned.artifact("design", "design.json")
     d = read_json(p)
     d["color"]["light"]["accent"] = "#6366F1"           # Tailwind indigo-500
@@ -80,6 +82,7 @@ def test_design_contrast_and_cliche_detected(planned):
 
 
 def test_aso_limits_and_links(planned):
+    set_profile(planned, "strict")
     p = planned.artifact("aso", "aso.json")
     d = read_json(p)
     d["locales"]["en-US"]["keywords"] = "memo, jot,memo"

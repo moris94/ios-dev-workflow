@@ -8,7 +8,7 @@ from appfactory import icon, support_page as sp
 from appfactory.engine import Engine
 from appfactory.gates import run_gate
 from appfactory.jsonio import read_json, write_json_atomic
-from conftest import HELP_URL, copy_artifacts, pass_planning, pass_stage, run, run_json
+from conftest import HELP_URL, copy_artifacts, pass_planning, pass_stage, run, run_json, set_profile
 
 EMAIL = "help@stillnote.example"
 
@@ -53,6 +53,7 @@ def test_icon_gate_passes_for_sample(icon_ready):
 
 
 def test_icon_gate_detects_problems(icon_ready):
+    set_profile(icon_ready, "strict")
     p = icon_ready.artifact("app_icon", "icon.json")
     spec = read_json(p)
     spec["layers"][0]["fill"] = "#FF00FF"                 # off-palette, low-contrast glyph
@@ -65,6 +66,7 @@ def test_icon_gate_detects_problems(icon_ready):
 
 
 def test_icon_gate_rejects_tiny_motif(icon_ready):
+    set_profile(icon_ready, "strict")
     p = icon_ready.artifact("app_icon", "icon.json")
     spec = read_json(p)
     spec["layers"] = [{"shape": "circle", "role": "glyph", "center": [0.5, 0.5], "radius": 0.05, "fill": "#F7F8F5"}]

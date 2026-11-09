@@ -47,7 +47,7 @@ ALWAYS_DENY = [
 PROTECTED_PATHS = re.compile(
     r"(factory/approvals/|factory/state\.json|factory/history\.jsonl|factory/gates/|factory/asc/ledger[\w.]*\.json|"
     r"factory/asc/sync-report\.json|factory/reports/(purchase-test|submission|release|testflight)\.json|"
-    r"factory/artifacts/release/readiness\.json|factory/artifacts/support_page/publication\.json|\.factory-tmp/locks)"
+    r"factory/artifacts/release/readiness\.json|factory/artifacts/support_page/publication\.json|\.factory-tmp/locks|\.factory-tmp/approval-request\.json)"
 )
 MUTATING = re.compile(r"(>|\btee\b|\bcp\b|\bmv\b|\brm\b|\bsed\s+-i|\btouch\b|\bpython\d?\b|\bperl\b|\bchmod\b|\bln\b|\btruncate\b|\bdd\b|\bjq\b.*>)")
 GIT_TMP = re.compile(r"(\.factory-tmp|\.xcresult|DerivedData|\.p8$|(^|/)\.env|xcuserdata|\.ipa$)")
@@ -84,10 +84,15 @@ def _approval_ok(root: Optional[Path], kind: str):
     from .jsonio import read_json
     from .project import Project
 
+    from .approval_request import single_release_approval
+
     readiness = read_json(root / "factory/artifacts/release/readiness.json")
     if not readiness:
         return False, "release readiness has not been computed"
-    return approval.verify(Project(root), kind, readiness.get("readiness_digest"))
+    project = Project(root)
+    if kind == "publish" and single_release_approval(project):
+        kind = "submit"  # one approval covers submit + release
+    return approval.verify(project, kind, readiness.get("readiness_digest"))
 
 
 def guard_bash(payload: dict) -> int:
@@ -146,6 +151,28 @@ def guard_files(payload: dict) -> int:
     return 0
 
 
+def user_prompt(payload: dict) -> int:
+    """UserPromptSubmit: the human's own message may answer a pending chat approval request."""
+    root = _project_root(payload.get("cwd"))
+    prompt = payload.get("prompt") or ""
+    if root is None or not prompt.strip():
+        return 0
+    from .approval_request import handle_reply
+    from .project import Project
+
+    message = handle_reply(Project(root), prompt)
+    if message:
+        print(message)  # stdout of UserPromptSubmit is added to Claude's context
+    return 0
+
+
+def handle_prompt_for_tests(root, text: str):
+    from .approval_request import handle_reply
+    from .project import Project
+
+    return handle_reply(Project(root), text)
+
+
 def session_start(payload: dict) -> int:
     root = _project_root(payload.get("cwd"))
     if root is None:
@@ -180,9 +207,11 @@ def main(which: str) -> int:
             return guard_files(payload)
         if which == "session-start":
             return session_start(payload)
+        if which == "user-prompt":
+            return user_prompt(payload)
     except Exception as exc:  # noqa: BLE001
         cmd = json.dumps(payload.get("tool_input") or {})
-        if which != "session-start" and RELEASE_WORDS.search(cmd):
+        if which in ("guard-bash", "guard-files") and RELEASE_WORDS.search(cmd):
             return _deny(f"guard error ({type(exc).__name__}); failing closed for a release-related action")
         print(f"[ios-app-factory] guard error: {type(exc).__name__}: {exc}", file=sys.stderr)
         return 0

@@ -17,7 +17,7 @@ trusted design skills (Anthropic's frontend-design if installed) and record how 
 
 Design stage: write `factory/artifacts/design/design.json` + `design.md`, then run `app-factory codegen`.
 UX review stage: define the representative use cases in `factory/artifacts/ux/ux.json`, run `app-factory ux render`,
-review the storyboards yourself, and return paths + review focus. Never approve — the human runs `app-factory approve ux`.
+review the storyboards yourself, and return paths + review focus. Never approve — the human replies 「承認 UX」 in the chat.
 App icon stage: write `factory/artifacts/app_icon/icon.json` + `icon.md`, run `app-factory icon render` and
 `app-factory icon preview`, look at the preview yourself and iterate until the motif reads at 60px.
 Screenshots stage: capture (`app-factory xcode capture`, macOS), render

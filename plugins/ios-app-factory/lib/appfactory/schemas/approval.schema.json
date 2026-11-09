@@ -12,7 +12,8 @@
     "approved_at",
     "expires_at",
     "interactive",
-    "signature"
+    "signature",
+    "channel"
   ],
   "properties": {
     "kind": {
@@ -57,6 +58,12 @@
     },
     "note": {
       "type": "string"
+    },
+    "channel": {
+      "enum": [
+        "chat",
+        "terminal"
+      ]
     }
   },
   "additionalProperties": false

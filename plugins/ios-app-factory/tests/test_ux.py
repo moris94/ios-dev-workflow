@@ -6,7 +6,7 @@ from appfactory import approval, guards, ux
 from appfactory.engine import Engine
 from appfactory.gates import run_gate
 from appfactory.jsonio import read_json, write_json_atomic
-from conftest import copy_artifacts, human_approves_ux, pass_planning, pass_stage, run, run_json
+from conftest import copy_artifacts, human_approves_ux, pass_planning, pass_stage, run, run_json, set_profile
 
 
 @pytest.fixture
@@ -60,6 +60,7 @@ def test_change_after_approval_invalidates_it(designed):
 
 
 def test_structure_checks(designed):
+    set_profile(designed, "strict")
     p = designed.root / ux.UX_JSON
     d = read_json(p)
     d["use_cases"] = [u for u in d["use_cases"] if u["kind"] != "monetization"]   # drop purchase flow
@@ -112,6 +113,7 @@ def test_testing_gate_requires_use_case_coverage(project):
     fake_build(project)
     pass_stage(project, "implementation")
     pass_stage(project, "localization")
+    set_profile(project, "strict")
     assert "uitests.use-cases" not in _failed(project, "testing")       # template marks UC1-UC3
     f = project.root / "AppUITests/AppUITests.swift"
     f.write_text(f.read_text().replace("// UC3", "//"))

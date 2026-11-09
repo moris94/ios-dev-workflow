@@ -32,12 +32,20 @@ class GateContext:
         self.stage_id = stage_id
         self.state = state
         self.config = project.config()
+        from ..profiles import profile_of
+
+        self.profile = profile_of(self.config)
         self.checks: List[dict] = []
         self._cache: Dict[str, Any] = {}
 
     # -- recording --------------------------------------------------------
     def check(self, check_id: str, ok: bool, message: str = "", severity: str = "error", details: Any = None) -> bool:
+        from ..profiles import relaxed
+
         entry = {"id": check_id, "passed": bool(ok), "severity": severity, "message": message}
+        if severity == "error" and relaxed(check_id, self.profile):
+            entry["severity"] = "warning"
+            entry["relaxed_by_profile"] = self.profile
         if details is not None:
             entry["details"] = details
         self.checks.append(entry)
@@ -91,6 +99,7 @@ class GateContext:
             "gate": self.stage_id,
             "evaluated_at": now_iso(),
             "passed": bool(self.checks) and not errors,
+            "profile": self.profile,
             "summary": {
                 "checks": len(self.checks),
                 "errors": len(errors),

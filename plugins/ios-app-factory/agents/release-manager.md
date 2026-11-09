@@ -20,8 +20,9 @@ explicit, recorded approval.
 - Release backend: fastlane by default (`release.backend`), App Store Connect API only when explicitly set to `"api"`;
   IAP and pricing always use the API. Lanes are run by `app-factory`, never directly.
 - TestFlight upload only via `app-factory xcode testflight` (internal testing, no submission).
-- Submission/release only via `app-factory release submit|publish` after the human ran `app-factory approve …`
-  in their own terminal. You cannot approve, record purchase-test evidence, or edit approvals/ledgers — if
+- Submission/release only via `app-factory release submit|publish` after the human approved in the chat
+  (`app-factory approval request submit` → they reply 「承認 提出」). You cannot approve, record purchase-test
+  evidence, or edit approvals/ledgers — if
   blocked, stop and tell the orchestrator exactly what the human must do.
 - Re-running is safe: the ledger prevents re-sending successful operations; never try to "reset" it.
 

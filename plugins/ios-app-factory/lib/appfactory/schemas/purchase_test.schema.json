@@ -69,6 +69,12 @@
     },
     "recorded_interactively": {
       "type": "boolean"
+    },
+    "channel": {
+      "enum": [
+        "chat",
+        "terminal"
+      ]
     }
   },
   "additionalProperties": true

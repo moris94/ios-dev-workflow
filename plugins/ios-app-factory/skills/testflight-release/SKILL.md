@@ -19,9 +19,10 @@ user-invocable: false
 Offline rehearsal: `app-factory testflight verify --simulate`.
 
 ## release_readiness
-1. Ask the human to test the TestFlight build on a device with a Sandbox account (purchase, restore after reinstall,
-   paywall in English and Japanese) and record it in **their** terminal: `app-factory evidence purchase-test`.
-   (The hooks block the agent from recording evidence.)
+1. Only if `release.require_manual_purchase_test` is true (off by default for delivery-first first releases):
+   ask the human to test the TestFlight build on a device with a Sandbox account (purchase, restore after reinstall,
+   paywall in English and Japanese), run `app-factory approval request purchase_test`, and let them reply
+   「承認 課金テスト」 in the chat. Otherwise the StoreKit unit/UI tests stand in for it.
 2. `app-factory release readiness` — checks every pre-release stage passed, live ASC sync converged,
    TestFlight build == tested sources == current sources, purchase evidence for this build; writes
    `factory/artifacts/release/readiness.json` with a `readiness_digest`.

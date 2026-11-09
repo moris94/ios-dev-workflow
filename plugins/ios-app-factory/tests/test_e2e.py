@@ -12,7 +12,7 @@ from appfactory import approval
 from appfactory.engine import Engine
 from appfactory.jsonio import read_json, write_json_atomic
 from appfactory.release import compute_readiness
-from appfactory import support_page
+from appfactory import guards, support_page
 from conftest import HELP_URL, copy_artifacts, human_approves_ux, run, run_json
 from helpers_sim import fake_build, fake_raw_captures, fake_tests
 
@@ -58,7 +58,9 @@ def test_full_pipeline_rehearsal(project, capsys, tmp_path, monkeypatch):
     assert run(root, "ux", "render") == 0
     rc, _ = run_json(root, capsys, "gate", "ux_review", "--owner", OWNER)
     assert rc == 2                                    # not approved yet → implementation can't start
-    human_approves_ux(project)
+    rc, req = run_json(root, capsys, "approval", "request", "ux")     # Claude shows the storyboards ...
+    assert "承認 UX" in req["ask_human"]
+    assert "APPROVED" in guards.handle_prompt_for_tests(root, "承認 UX")   # ... the human replies in chat
     gate(project, capsys, "ux_review")
 
     # Support + privacy page: one combined page, e-mail from the environment, published (Notion simulated)
@@ -148,16 +150,16 @@ def test_full_pipeline_rehearsal(project, capsys, tmp_path, monkeypatch):
     rc, _ = run_json(root, capsys, "gate", "submit", "--owner", OWNER)
     assert rc == 2
 
-    human_approve(project, "submit")
+    rc, req = run_json(root, capsys, "approval", "request", "submit")
+    assert rc == 0 and "release after Apple approves" in req["ask_human"]
+    assert "APPROVED 'submit'" in guards.handle_prompt_for_tests(root, "承認 提出")
     start(project, capsys, "submit")
     rc, sub = run_json(root, capsys, "release", "submit", "--simulate")
     assert rc == 0 and sub["submitted"] and sub["review_submission_id"]
     gate(project, capsys, "submit")
 
-    # Publishing needs Apple's approval state and a separate human approval
+    # Publishing needs Apple's approval state; the submit approval covers it (single release approval, mvp default)
     start(project, capsys, "publish")
-    assert run(root, "release", "publish", "--simulate") == 1  # no publish approval yet
-    human_approve(project, "publish")
     assert run(root, "release", "publish", "--simulate") == 1  # Apple has not approved yet
     assert "PENDING_DEVELOPER_RELEASE" in capsys.readouterr().err
     assert run(root, "release", "simulate-apple-approval") == 0

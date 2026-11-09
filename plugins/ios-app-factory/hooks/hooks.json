@@ -1,5 +1,5 @@
 {
-  "description": "ios-app-factory guards: human-only approval, approval-gated submission/release, secret protection, machine-owned files, git hygiene, resume notice",
+  "description": "ios-app-factory guards: chat approvals from the human's own messages, approval-gated submission/release, secret protection, machine-owned files, git hygiene, resume notice",
   "hooks": {
     "PreToolUse": [
       {
@@ -8,7 +8,10 @@
           {
             "type": "command",
             "command": "python3",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/run_hook.py", "guard-bash"],
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/run_hook.py",
+              "guard-bash"
+            ],
             "timeout": 30
           }
         ]
@@ -19,7 +22,10 @@
           {
             "type": "command",
             "command": "python3",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/run_hook.py", "guard-files"],
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/run_hook.py",
+              "guard-files"
+            ],
             "timeout": 15
           }
         ]
@@ -31,8 +37,26 @@
           {
             "type": "command",
             "command": "python3",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/hooks/run_hook.py", "session-start"],
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/run_hook.py",
+              "session-start"
+            ],
             "timeout": 30
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3",
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/hooks/run_hook.py",
+              "user-prompt"
+            ],
+            "timeout": 60
           }
         ]
       }
