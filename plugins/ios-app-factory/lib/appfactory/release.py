@@ -239,8 +239,16 @@ def _single(project: Project) -> bool:
 
 
 def write_readiness(project: Project) -> dict:
+    """Write readiness.json — but leave it untouched when nothing it certifies changed.
+    Rewriting only to bump `generated_at` would change the release_readiness stage's output
+    digest and make it (and submit/publish) stale for no reason."""
     r = compute_readiness(project)
-    write_json_atomic(project.root / READINESS, r)
+    path = project.root / READINESS
+    existing = read_json(path)
+    if existing and existing.get("readiness_digest") == r["readiness_digest"] and \
+            existing.get("ready") == r["ready"] and existing.get("checks") == r["checks"]:
+        return existing
+    write_json_atomic(path, r)
     return r
 
 
