@@ -52,6 +52,12 @@ def project(tmp_path) -> Project:
     return Project(root)
 
 
+def set_profile(project: Project, profile: str):
+    cfg = project.config()
+    cfg.setdefault("quality", {})["profile"] = profile
+    write_json_atomic(project.config_path, cfg)
+
+
 def copy_artifacts(project: Project, *stages):
     for st in stages:
         src = SAMPLE / "factory/artifacts" / st

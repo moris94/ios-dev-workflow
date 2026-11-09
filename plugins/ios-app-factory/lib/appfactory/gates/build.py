@@ -122,10 +122,10 @@ def testing_gate(ctx):
         return
     ctx.check("tests.status", report["status"] == "passed" and report["totals"]["failed"] == 0,
               f"{report['totals']['passed']} passed / {report['totals']['failed']} failed")
-    ctx.check("tests.unit", report["suites"]["unit"]["passed"] >= 5 and report["suites"]["unit"]["failed"] == 0,
-              f"unit: {report['suites']['unit']}")
-    ctx.check("tests.ui", report["suites"]["ui"]["passed"] >= 2 and report["suites"]["ui"]["failed"] == 0,
-              f"ui: {report['suites']['ui']}")
+    ctx.check("tests.unit.failures", report["suites"]["unit"]["failed"] == 0, f"unit: {report['suites']['unit']}")
+    ctx.check("tests.ui.failures", report["suites"]["ui"]["failed"] == 0, f"ui: {report['suites']['ui']}")
+    ctx.check("tests.unit.count", report["suites"]["unit"]["passed"] >= 5, "at least 5 unit tests passed")
+    ctx.check("tests.ui.count", report["suites"]["ui"]["passed"] >= 2, "at least 2 UI tests passed")
     purchase = [t for t in report["tests"] if re.search(r"purchase|entitle|restore|paywall", t["name"], re.I)]
     ctx.check("tests.purchase-covered", any(t["result"] == "passed" for t in purchase) and
               all(t["result"] != "failed" for t in purchase), f"{len(purchase)} purchase/entitlement tests passed")

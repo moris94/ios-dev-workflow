@@ -69,7 +69,7 @@ Stage → agent → skills (from `pipeline.json`):
 | research | market-researcher | market-research |
 | proposal, charter, mvp | product-manager | product-proposal, product-charter, mvp-spec, storekit-monetization |
 | design | product-designer | design-concept |
-| ux_review | product-designer | ux-prototype (human approval: `app-factory approve ux`) |
+| ux_review | product-designer | ux-prototype (human approval in chat: 「承認 UX」) |
 | support_page | release-manager | support-page (Notion MCP when connected) |
 | app_icon | product-designer | app-icon |
 | implementation, localization | ios-developer | swiftui-implementation, storekit-monetization, localization |
@@ -88,6 +88,24 @@ Artifacts already on disk are reused; the subagent should continue from them, no
 App Store Connect writes are ledger-protected (`factory/asc/ledger.json`), so re-running
 `asc apply` never re-sends a successful operation.
 
+## 2b. Delivery first (quality profile `mvp`, the default)
+
+The first release optimises for shipping. Under `quality.profile: "mvp"` checks about polish and depth are
+reported as warnings and do not block; only correctness, App Store limits, approvals and secrets block. Do not
+spend extra attempts polishing warnings — mention the notable ones in your report and move on. If the human
+wants the full bar, they set `quality.profile` to `"strict"`.
+
+## 2c. Approvals happen in this chat
+
+Every human approval is given by the human replying in this conversation; nobody needs a terminal.
+1. Run `app-factory approval request <ux|submit|purchase_test>`; it prints a summary and the exact reply.
+2. Show the human what they approve (open the storyboards / summarise readiness) and ask them to reply with
+   that phrase, e.g. 「承認 UX」, 「承認 提出」 (declining: 「却下 UX」 plus what to change).
+3. Their message itself is recorded by the plugin's UserPromptSubmit hook; you will see
+   `[ios-app-factory] The human APPROVED …` in your context. You cannot approve for them — never write the reply
+   yourself, edit approval files, or claim approval without that notice.
+By default (`approval.single_release_approval`) the submit approval also covers releasing after Apple approves.
+
 ## 3. Human stops (never work around these)
 
 - **Research NO-GO** (`verdict.go=false`): present the evidence, ask whether to pivot.
@@ -96,7 +114,7 @@ App Store Connect writes are ledger-protected (`factory/asc/ledger.json`), so re
 - **UI/UX pre-approval** (`ux_review`): after the designer renders the storyboards, show them to the human
   (paths from `app-factory ux status`; open the PNGs so they appear in the conversation), list each use case in
   one line plus `review_focus`, and ask: approve, or what to change. Revise on feedback. When they are satisfied,
-  they run `app-factory approve ux` in their own terminal; then gate `ux_review`. Implementation never starts before
+  run `app-factory approval request ux` and let them reply 「承認 UX」 in the chat; then gate `ux_review`. Implementation never starts before
   this approval, and any later UX change needs a new approval. While waiting you may run stages that don't depend on
   it (`support_page`, `aso`).
 - **Support e-mail / page publishing**: the `support_page` stage needs `FACTORY_SUPPORT_EMAIL`. If no Notion MCP
@@ -109,12 +127,13 @@ App Store Connect writes are ledger-protected (`factory/asc/ledger.json`), so re
 - **ASC credentials / app record**: `asc_sync` in apply mode and `testflight` need `ASC_KEY_ID`,
   `ASC_ISSUER_ID`, `ASC_KEY_CONTENT_BASE64` and an existing app record. Without them run the dry-run
   (`app-factory asc plan`) and stop; the human sets `asc.mode` to `apply` in `factory/config.json`.
-- **Manual purchase test**: a human records `app-factory evidence purchase-test` after testing the TestFlight build.
-- **Submission & release**: you may run `app-factory release readiness` and `app-factory release submit --dry-run`.
-  Then STOP and ask the human to run in **their own terminal**:
-  `app-factory approve submit` (then you may run `app-factory release submit`), and later, after Apple approves,
-  `app-factory approve publish` (then `app-factory release publish`). You cannot approve; the hooks and the
-  scripts both refuse it. Do not try alternative paths (fastlane deliver, curl, editing approval files).
+- **Manual purchase test** (only when `release.require_manual_purchase_test` is true — off by default): ask the human to
+  test the TestFlight build, then `app-factory approval request purchase_test`; they reply 「承認 課金テスト」.
+- **Submission & release**: run `app-factory release readiness` and `app-factory release submit --dry-run`, then
+  `app-factory approval request submit`, show the summary and ask for 「承認 提出」. After the approval notice,
+  `app-factory release submit`. Once Apple approves (version pending developer release), `app-factory release publish`
+  — covered by the same approval unless `approval.single_release_approval` is false (then request `publish`).
+  Do not try alternative paths (fastlane deliver, curl, editing approval files); hooks and scripts refuse them.
 
 ## 4. Reporting
 

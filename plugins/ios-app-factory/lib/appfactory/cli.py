@@ -405,6 +405,20 @@ def cmd_approve(args):
     _out({"approved": rec["kind"], "expires_at": rec["expires_at"]})
 
 
+def cmd_approval(args):
+    from . import approval_request as ar
+
+    project = _project(args)
+    if args.action == "status":
+        _out(ar.status(project))
+        return
+    try:
+        _out(ar.request(project, args.kind))
+    except ar.RequestError as exc:
+        log(str(exc), level="error")
+        return 2
+
+
 def cmd_doctor(args):
     from .project import Project
 
@@ -582,6 +596,11 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--simulate", action="store_true")
     s.set_defaults(fn=cmd_release)
 
+    s = sub.add_parser("approval", help="chat approvals: request <ux|submit|publish|purchase_test> | status")
+    s.add_argument("action", choices=["request", "status"])
+    s.add_argument("kind", nargs="?", choices=["ux", "submit", "publish", "purchase_test"])
+    s.set_defaults(fn=cmd_approval)
+
     s = sub.add_parser("approve", help="HUMAN ONLY: approve submission/publication (interactive terminal)")
     s.add_argument("kind", choices=["ux", "submit", "publish"])
     s.add_argument("--approver")
@@ -590,7 +609,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     sub.add_parser("doctor").set_defaults(fn=cmd_doctor)
     s = sub.add_parser("hook", help="Claude Code hook entrypoints")
-    s.add_argument("hook", choices=["guard-bash", "guard-files", "session-start"])
+    s.add_argument("hook", choices=["guard-bash", "guard-files", "session-start", "user-prompt"])
     s.set_defaults(fn=cmd_hook)
     return p
 

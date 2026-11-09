@@ -114,11 +114,15 @@ research → proposal → charter → mvp → design → ux_review(人間承認)
 
 ## 7. 人間承認
 
-承認の種類: `ux`（実装前の UI/UX、UX ダイジェストに結び付く）、`submit` / `publish`（リリース準備のダイジェストに結び付く）。
+承認の種類: `ux`（実装前の UI/UX、UX ダイジェストに結び付く）、`submit` / `publish`（リリース準備のダイジェストに結び付く）。既定では `submit` の承認で `publish` も行う（`approval.single_release_approval`）。
+
+**チャットでの承認（既定、`approval.mode: chat`）**: Claude が `app-factory approval request <kind>` を実行し、承認対象のダイジェストを依頼ファイル（`.factory-tmp/approval-request.json`）に書き込む。人間がチャットで「承認 提出」などと返信すると、`UserPromptSubmit` Hook（人間の入力でだけ発火する）が、返信に対象の種類が含まれていること、内容のダイジェストが依頼時から変わっていないことを確認し、署名付きの承認を記録する。Claude は返信を偽造できず、依頼ファイルや承認ファイルの編集は Hook がブロックする。`terminal` モードでは従来の TTY 方式を使う。
+
+**品質プロファイル**: `quality.profile` が `mvp`（既定）の場合、`profiles.RELAXED_IN_MVP` に挙げたチェックは警告に下げる（ゲートの結果に `relaxed_by_profile` として記録する）。正しさ・上限・承認・秘密情報・鮮度のチェックは対象にしない。
 
 | 層 | 仕組み |
 |---|---|
-| CLI | `approve` は TTY 必須、`CLAUDECODE` 環境では拒否、アプリ名・版・ビルドを含むフレーズの入力が必要 |
+| 入力 | chat: 人間のメッセージ（UserPromptSubmit Hook）で、対象の種類を含む返信が必要 ／ terminal: `approve` は TTY 必須で `CLAUDECODE` 環境では拒否、確認フレーズの入力が必要 |
 | データ | 承認は readiness ダイジェストに束縛され、リポジトリ外の鍵で HMAC-SHA256 署名され、有効期限を持つ |
 | 実行 | `release submit/publish` は readiness を再計算し、署名・期限・ダイジェストを検証 |
 | Hook | approve/evidence の実行、承認なしの submit/publish、直接の API 提出、fastlane の deliver/submit、承認・台帳・状態の編集、鍵の参照を拒否 |

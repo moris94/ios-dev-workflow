@@ -180,8 +180,10 @@ def aso_gate(ctx):
         ctx.check(f"{locale}.name.length", len(meta["name"]) <= 30, f"name {len(meta['name'])}/30")
         ctx.check(f"{locale}.subtitle.length", len(meta["subtitle"]) <= 30, f"subtitle {len(meta['subtitle'])}/30")
         ctx.check(f"{locale}.promo.length", len(meta["promotional_text"]) <= 170, f"promotional text {len(meta['promotional_text'])}/170")
-        ctx.check(f"{locale}.description.length", 300 <= len(meta["description"]) <= 4000,
-                  f"description {len(meta['description'])} chars (300..4000)")
+        ctx.check(f"{locale}.description.max", len(meta["description"]) <= 4000,
+                  f"description {len(meta['description'])}/4000 chars")
+        ctx.check(f"{locale}.description.min", len(meta["description"]) >= 300,
+                  f"description {len(meta['description'])} chars (>= 300 recommended)")
         if locale == "ja":
             ctx.check("ja.is-japanese", bool(re.search(r"[\u3040-\u30ff\u4e00-\u9fff]", meta["description"])),
                       "Japanese description is written in Japanese")

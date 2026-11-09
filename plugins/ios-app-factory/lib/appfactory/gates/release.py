@@ -92,11 +92,14 @@ def _approved_stage(ctx, kind: str, report_rel: str, flag: str):
     rep = ctx.load_json(report_rel)
     if not readiness or not rep:
         return
-    rec = ctx.load_json(f"factory/approvals/{kind}.json")
+    rec = ctx.load_json(f"factory/approvals/{kind}.json", required=False)
     if rec:
         errors = validate(rec, "approval")
         ctx.check("approval.schema", not errors, "approval record valid", details=errors or None)
-    ok, msg = approval.verify(ctx.project, kind, readiness["readiness_digest"])
+    from ..approval_request import single_release_approval
+
+    approval_kind = "submit" if kind == "publish" and single_release_approval(ctx.project) else kind
+    ok, msg = approval.verify(ctx.project, approval_kind, readiness["readiness_digest"])
     ctx.check("approval.human", ok, msg)
     ctx.check(f"{kind}.done", rep.get(flag) is True and (not rep.get("simulated") or _sim_ok()), f"{kind} executed against live App Store Connect")
 

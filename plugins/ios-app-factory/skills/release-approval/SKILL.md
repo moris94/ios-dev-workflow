@@ -1,38 +1,35 @@
 ---
 name: release-approval
-description: Human-approved App Review submission and App Store release for the iOS App Factory. Explains the approval commands the human runs in their own terminal and runs submit/publish only after a valid approval exists.
+description: Human-approved App Review submission and App Store release for the iOS App Factory, approved by the human replying in the Claude chat. Shows what will be submitted, requests the approval, then submits/releases once the approval is recorded.
 disable-model-invocation: true
 argument-hint: "submit | publish | status"
 ---
 
 # Release approval (stages `submit`, `publish`)
 
-Nothing is submitted for review or released without an explicit human approval. This is enforced by:
-1. `app-factory approve` refuses to run without an interactive terminal or from inside Claude Code,
-   and requires typing `SUBMIT <App> <version> (<build>)` exactly;
-2. the approval is HMAC-signed with a key outside the repo, bound to the readiness digest, and expires
-   (`release.approval_ttl_hours`, default 72h) — any change after approval invalidates it;
-3. PreToolUse hooks block the agent from running `approve`, from `release submit|publish` without a valid
-   approval, from direct App Store Connect submission calls, from running fastlane release lanes or `deliver`
-   directly, and from editing approval/ledger/state files;
-4. with the default fastlane backend, the `submit_review` / `release_version` lanes call
-   `app-factory release verify-approval` themselves and abort without a valid approval.
-
-`app-factory release submit|publish` runs the fastlane lane (default) or the API (when `release.backend` is
-`"api"`). First-time in-app purchases are submitted through the API together with the version in both cases.
+Nothing is submitted for review or released without the human's explicit approval — given by replying in this
+chat. How it is enforced:
+1. `app-factory approval request <kind>` binds the request to the release readiness digest; the human's own reply
+   (「承認 提出」/ "approve submit") is recorded by the plugin's UserPromptSubmit hook, which only fires for text the
+   human typed. The reply must name the kind, and nothing is recorded if anything changed since the request.
+2. The record is HMAC-signed with a key outside the repo and expires (`release.approval_ttl_hours`, default 72h).
+3. `app-factory release submit|publish` re-checks the approval; with the fastlane backend the lanes re-check it again.
+4. Hooks block the agent from writing approval files or the pending request, from the terminal `approve` command,
+   from direct App Store Connect submission calls and from running fastlane release lanes directly.
+`approval.mode: "terminal"` switches to the stricter terminal flow (`app-factory approve <kind>` in a TTY).
+By default one submit approval also covers releasing after Apple approves (`approval.single_release_approval`).
 
 Requested: `$ARGUMENTS`
 
 ## Agent procedure
-- `status`: `app-factory status` and `app-factory release readiness`; print the summary.
+- `status`: `app-factory approval status` and `app-factory release readiness`; print the summary.
 - `submit`:
   1. `app-factory release readiness` must report `ready: true`.
   2. `app-factory release submit --dry-run` and show the operations.
-  3. Ask the human to run, in their own terminal (not through Claude):
-     `app-factory approve submit`
-  4. When they confirm, `app-factory start submit --owner ${CLAUDE_SESSION_ID}`, `app-factory release submit`,
-     `app-factory gate submit --owner ${CLAUDE_SESSION_ID}`.
-- `publish` (only after Apple approves — version state `PENDING_DEVELOPER_RELEASE`):
-  ask the human to run `app-factory approve publish`, then `app-factory release publish` and `app-factory gate publish`.
+  3. `app-factory approval request submit`; show its summary and ask the human to reply 「承認 提出」.
+  4. After `[ios-app-factory] The human APPROVED 'submit'` appears: `app-factory start submit --owner ${CLAUDE_SESSION_ID}`,
+     `app-factory release submit`, `app-factory gate submit --owner ${CLAUDE_SESSION_ID}`.
+- `publish` (after Apple approves — version pending developer release): `app-factory release publish` and
+  `app-factory gate publish`; request a separate 「承認 公開」 only if `approval.single_release_approval` is false.
 
-If any command reports `HUMAN APPROVAL REQUIRED` or a hook blocks it, stop and tell the human; never look for another route.
+If a command reports `HUMAN APPROVAL REQUIRED` or a hook blocks it, ask the human in the chat; never look for another route.

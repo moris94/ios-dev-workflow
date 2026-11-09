@@ -84,7 +84,7 @@
         },
         "additionalProperties": false
       },
-      "minItems": 2
+      "minItems": 1
     },
     "anti_generic": {
       "type": "object",

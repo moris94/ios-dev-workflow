@@ -1,21 +1,18 @@
-"""Human approval for review submission and release.
+"""Human approvals: ``ux`` (UI/UX before implementation), ``submit`` and ``publish``.
 
-Kinds: ``ux`` (representative use-case UI/UX before implementation, bound to the UX digest),
-``submit`` and ``publish`` (bound to the release readiness digest).
+Two channels, chosen by ``approval.mode`` in factory/config.json:
 
-Enforced at three independent layers:
+* ``chat`` (default): Claude runs ``app-factory approval request <kind>`` and shows what is
+  being approved; the human replies in the Claude conversation (e.g. "承認 提出"). A
+  ``UserPromptSubmit`` hook — which only fires for text the human actually typed — records
+  the approval. Claude cannot produce that event, and hooks stop it from writing approval
+  files or running the terminal command.
+* ``terminal``: ``app-factory approve <kind>`` in the human's own interactive terminal,
+  with a typed confirmation phrase (stricter, less convenient).
 
-1. ``app-factory approve`` only runs on an interactive terminal (stdin and
-   stdout are TTYs) and requires the human to type a confirmation phrase that
-   names the exact app, version and build. Claude Code's Bash tool is not a
-   TTY, so Claude cannot produce an approval.
-2. The approval is bound to the *readiness digest* (build, metadata,
-   screenshots, IAP, ASC plan). Any change after approval invalidates it.
-   It is HMAC-signed with a key stored outside the repository
-   (``~/.config/ios-app-factory/approver.key``, mode 0600) and expires.
-3. Plugin hooks (PreToolUse) block Claude from running ``approve``, from
-   running ``release submit/publish`` without a valid approval, from writing
-   into ``factory/approvals/`` and from reading the approver key.
+Either way the record is bound to a digest of what was approved (UX storyboards or the
+release readiness), HMAC-signed with a key outside the repository, and expires; any change
+after approval invalidates it.
 """
 from __future__ import annotations
 
@@ -34,7 +31,9 @@ from .jsonio import read_json, write_json_atomic
 from .project import Project
 from .timeutil import now, parse_iso
 
-SIGNED_FIELDS = ("kind", "readiness_digest", "app_version", "build_number", "approver", "approved_at", "expires_at", "interactive")
+SIGNED_FIELDS = ("kind", "readiness_digest", "app_version", "build_number", "approver", "approved_at", "expires_at",
+                 "interactive", "channel")
+CHANNELS = ("chat", "terminal")
 
 
 class ApprovalError(RuntimeError):
@@ -95,21 +94,34 @@ def create(project: Project, kind: str, readiness: dict, approver: Optional[str]
     typed = ask(f"\nType exactly '{expected}' to approve: ").strip()
     if typed != expected:
         raise ApprovalError("confirmation phrase did not match; nothing approved")
+    return write_record(project, kind, readiness, approver=approver, channel="terminal", note=note)
+
+
+def write_record(project: Project, kind: str, subject: dict, approver: Optional[str] = None,
+                 channel: str = "chat", note: str = "") -> dict:
+    """Persist a signed approval. Only reached from a human action: the terminal prompt or the
+    UserPromptSubmit hook handling the human's own chat message."""
+    if kind not in ("submit", "publish", "ux"):
+        raise ApprovalError("kind must be submit, publish or ux")
+    if channel not in CHANNELS:
+        raise ApprovalError(f"channel must be one of {CHANNELS}")
+    cfg = project.config()
     ttl = float(cfg.get("release", {}).get("approval_ttl_hours", 72))
     t = now()
     record = {
         "kind": kind,
-        "readiness_digest": readiness["readiness_digest"],
-        "app_version": version,
-        "build_number": build,
+        "readiness_digest": subject["readiness_digest"],
+        "app_version": subject["app_version"],
+        "build_number": str(subject["build_number"]),
         "approver": approver or getpass.getuser(),
         "approved_at": t.isoformat().replace("+00:00", "Z"),
         "expires_at": (t + timedelta(hours=ttl)).isoformat().replace("+00:00", "Z"),
         "interactive": True,
+        "channel": channel,
     }
     record["signature"] = _sign(record, _load_key(create=True))
     if note:
-        record["note"] = note
+        record["note"] = note[:500]
     write_json_atomic(approval_path(project, kind), record)
     return record
 
@@ -117,7 +129,8 @@ def create(project: Project, kind: str, readiness: dict, approver: Optional[str]
 def verify(project: Project, kind: str, readiness_digest: Optional[str]) -> Tuple[bool, str]:
     rec = read_json(approval_path(project, kind))
     if not rec:
-        return False, f"no {kind} approval recorded (human must run `app-factory approve {kind}` in a terminal)"
+        return False, (f"no {kind} approval recorded — run `app-factory approval request {kind}`, show it to the human "
+                       f"and let them reply in the chat (or `app-factory approve {kind}` in a terminal)")
     try:
         key = _load_key(create=False)
     except ApprovalError as exc:

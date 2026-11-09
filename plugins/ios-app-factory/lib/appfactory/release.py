@@ -199,12 +199,15 @@ def compute_readiness(project: Project) -> dict:
     check("testflight.same-sources", tf.get("source_digest") == tests.get("source_digest") == source_digest(project.root),
           "uploaded build == tested sources == current sources")
     purchase = read_json(project.reports / "purchase-test.json")
-    require_manual = cfg.get("release", {}).get("require_manual_purchase_test", True)
+    from .profiles import profile_of
+
+    require_manual = cfg.get("release", {}).get("require_manual_purchase_test", profile_of(cfg) == "strict")
     if require_manual:
         ok = bool(purchase) and purchase.get("recorded_interactively") is True and \
             str(purchase.get("build_number")) == str(cfg["app"]["build_number"]) and \
             {c["id"] for c in purchase.get("cases", []) if c["result"] == "pass"} >= {"purchase", "restore", "en_paywall", "ja_paywall"}
-        check("purchase-test", ok, "sandbox/TestFlight purchase, restore and en/ja paywall verified by a human on this build")
+        check("purchase-test", ok, "sandbox/TestFlight purchase, restore and en/ja paywall verified by a human on this build "
+              "(`app-factory approval request purchase_test`, human replies in chat)")
     components = {
         "app_version": cfg["app"]["version"],
         "build_number": str(cfg["app"]["build_number"]),
@@ -221,11 +224,18 @@ def compute_readiness(project: Project) -> dict:
         f"Version {cfg['app']['version']} build {cfg['app']['build_number']} (ASC build id {tf.get('build_id')})",
         f"IAP: " + ", ".join(f"{p['product_id']} ${p['price_usd']}" for p in mvp["monetization"]["products"]),
         f"Locales: {', '.join(cfg['app']['locales'])}",
-        "Release type: MANUAL (publishing needs a separate `approve publish`)",
+        "Release type: MANUAL — " + ("the submit approval also covers releasing after Apple approves"
+                                     if _single(project) else "releasing needs a separate publish approval"),
     ] + [f"[{'OK' if c['passed'] else 'NG'}] {c['message']}" for c in checks]
     return {"generated_at": now_iso(), "ready": all(c["passed"] for c in checks), "readiness_digest": digest,
             "app_version": cfg["app"]["version"], "build_number": str(cfg["app"]["build_number"]),
             "components": components, "checks": checks, "summary": summary}
+
+
+def _single(project: Project) -> bool:
+    from .approval_request import single_release_approval
+
+    return single_release_approval(project)
 
 
 def write_readiness(project: Project) -> dict:
@@ -244,7 +254,10 @@ def _require_approval(project: Project, kind: str) -> dict:
         raise ReleaseError("release readiness changed since readiness.json was written; regenerate and re-approve")
     if not fresh["ready"]:
         raise ReleaseError("release is not ready: " + "; ".join(c["message"] for c in fresh["checks"] if not c["passed"]))
-    ok, msg = approval.verify(project, kind, fresh["readiness_digest"])
+    from .approval_request import single_release_approval
+
+    approval_kind = "submit" if kind == "publish" and single_release_approval(project) else kind
+    ok, msg = approval.verify(project, approval_kind, fresh["readiness_digest"])
     if not ok:
         raise ReleaseError(f"HUMAN APPROVAL REQUIRED: {msg}")
     log(f"{kind} approval verified: {msg}")

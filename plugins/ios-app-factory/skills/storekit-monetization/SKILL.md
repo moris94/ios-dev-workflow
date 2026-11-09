@@ -26,7 +26,7 @@ user-invocable: false
 - Unit tests with `MockStoreClient`: purchase success → isPro, cancel → not pro, pending → not pro + message, revoked → not pro, restore → refresh.
 - `StoreKitConfigurationTests` with `SKTestSession(configurationFileNamed: "Products")` to purchase/refund against the local config.
 - UI tests launch with `-uiTesting` (mock store) and assert the paywall shows price and restore button in en and ja.
-- Release readiness requires a human-recorded TestFlight/sandbox test (`app-factory evidence purchase-test`): purchase, restore on reinstall, en/ja paywall.
+- Optional (`release.require_manual_purchase_test`): a human confirms a TestFlight/sandbox purchase test in the chat (「承認 課金テスト」): purchase, restore on reinstall, en/ja paywall.
 
 ## App Store Connect
 `app-factory asc plan/apply` creates the IAP (`/v2/inAppPurchases`), en-US/ja localizations, price schedule (base territory USA, auto-equalized), availability, and the App Review screenshot from the paywall capture. First-time IAPs are submitted together with the app version at submission.

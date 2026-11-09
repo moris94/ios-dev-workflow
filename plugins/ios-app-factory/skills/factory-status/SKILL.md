@@ -11,4 +11,5 @@ the failing checks (`passed: false`, severity `error`) in one line each.
 
 Finish with the next action:
 - an agent stage → "run /ios-app-factory:factory resume"
-- a human stop (credentials, purchase test, approval) → the exact command the human must run in their own terminal.
+- a human stop: approvals → run `app-factory approval request <kind>` and tell the human the reply to send in chat;
+  credentials → which environment variable to set.

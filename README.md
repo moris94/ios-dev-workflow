@@ -82,7 +82,7 @@ plugins/ios-app-factory/
 ├── scripts/xcode/*.sh                  # OS 依存操作（xcodegen/xcodebuild/simctl/fastlane）
 ├── templates/ios-app/                  # SwiftUI + SwiftData + StoreKit 2 アプリ雛形（XcodeGen）
 ├── examples/sample-app/                # 成果物の形式例（テスト用フィクスチャ）
-└── tests/                              # pytest（150 件）
+└── tests/                              # pytest（170 件）
 docs/ARCHITECTURE.md                    # 設計書
 ```
 
@@ -136,7 +136,9 @@ Claude Code でマーケットプレイスの情報を更新してから、プ�
 
 ターミナルからは `claude plugin marketplace update ios-dev-workflow` → `claude plugin update ios-app-factory@ios-dev-workflow` でも同じです。いずれも **再起動後に反映** されます。`/plugin` の画面で、プラグインのバージョンが上がっていることを確認してください。`--plugin-dir` でローカルの clone を読み込んでいる場合は、`git pull` して再起動するだけです。
 
-既存のアプリのリポジトリで 0.3.0 に上げたときの注意:
+既存のアプリのリポジトリで 0.4.0 に上げたときの注意:
+- **承認とプロファイル**: `quality` / `approval` の設定がない場合は、`mvp`・チャット承認・単一承認として動きます。以前の設定で `release.require_manual_purchase_test: true` と明示している場合は、課金テストが必須のままです（チャットで「承認 課金テスト」で記録できます）。不要なら `false` にしてください。
+- **ターミナル承認の記録**: 0.3.0 以前にターミナルで記録した承認は署名の形式が変わったため無効になります。チャットで承認し直してください。
 - **Fastfile**: 雛形の Fastfile は自動では上書きされません。新しいレーン（`sync_metadata` / `build_status` / `submit_review` / `release_version`）を入れるため、`app-factory scaffold --only fastlane/Fastfile` を実行してください（ほかのファイルには触れません）。独自に編集していた場合は、差分を確認してから取り込んでください。
 - **リリースのバックエンド**: `release.backend` がない設定は fastlane として扱われます。これまでどおり API で処理したい場合は、`"release": {"backend": "api"}` を追記します。
 - **新しい工程**: `ux_review`（UI/UX の事前承認）、`support_page`、`app_icon` が増え、`implementation` 以降がこれらに依存するようになりました。進行中のプロジェクトでは `app-factory status` で `implementation` 以降が `stale` になります。新しい工程を通してから再検証してください（`/ios-app-factory:factory resume`）。
@@ -201,15 +203,42 @@ export FACTORY_NOTION_PARENT_PAGE=https://www.notion.so/... # 任意: 「Web で
 | 仕様変更 | `/ios-app-factory:factory change mvp 無料枠を 10→20 件に変更` |
 | 審査提出・公開（人間） | `/ios-app-factory:release-approval submit` の案内に従う |
 
+### 初回リリースはデリバリー優先（品質プロファイル `mvp`）
+
+新しいプロジェクトの既定は `quality.profile: "mvp"` です。仕上がりの細かさに関するチェック（調査の深さ、デザインの独自性、アイコンの作り込み、ASO の推奨値、テスト件数、ドキュメントの分量など）は**警告として報告するだけで、工程は止めません**。次のものは常にエラーとして止めます。
+- 成果物の Schema
+- ビルドの成功、失敗テストが 0 件であること
+- App Store の上限や形式（文字数、画像サイズ、アルファなし）
+- StoreKit の実装の正しさ（購入の復元を含む）、日英ローカライズの欠落、リンクの一致
+- 人間の承認、秘密情報の扱い
+- 生成物やレポートが最新であること
+
+ゲートの結果には、プロファイルによって警告に下げたチェックが `relaxed_by_profile` として記録されます。2 回目以降のリリースで基準を上げたいときは `"strict"` にします。
+
+### 承認はすべて Claude のチャットで完結
+
+ターミナルでの入力は不要です。Claude が承認の対象（ストーリーボードや提出内容の要約）を会話で提示するので、**チャットで返信するだけ**で承認できます。
+
+| 承認 | 返信の例 | 断る場合 |
+|---|---|---|
+| UI/UX（実装前） | 「承認 UX」 / `approve ux` / 「UXを承認」 | 「却下 UX」＋直してほしい点 |
+| 審査提出（既定では Apple 承認後の公開も含む） | 「承認 提出」 / `approve submit` | 「却下 提出」 |
+| 課金テスト（任意。既定では不要） | 「承認 課金テスト」 | — |
+
+- 仕組み: Claude が `app-factory approval request <種類>` で承認依頼を出します。あなたのメッセージは、プラグインの `UserPromptSubmit` Hook（人間が入力したメッセージでだけ動作します）が受け取って承認を記録します。Claude があなたの返信を代わりに作ることはできず、承認ファイルや依頼ファイルの直接編集も Hook がブロックします。
+- 誤承認を防ぐため、返信には**何を承認するか**（UX / 提出 など）を含める必要があります。「OK」だけの返信や長文の中の「承認」は承認として扱いません。依頼を出した後に内容が変わっていた場合も記録しません。
+- 承認は対象の内容のダイジェストに結び付けて署名し、有効期限は既定 72 時間です。後から内容が変わると無効になります。
+- より厳格にしたい場合は `approval.mode: "terminal"` にすると、従来どおりターミナルで `app-factory approve <種類>` を使う方式になります。
+
 ### 人間の作業が必要な地点（自動では越えません）
 - 調査結果が **NO-GO** のとき（方向転換するか判断）
-- **代表ユースケースの UI/UX の事前承認**: Claude が提示するストーリーボードを確認し、修正を依頼するか `app-factory approve ux` で承認（実装はこの承認後に始まります）
+- **代表ユースケースの UI/UX の事前承認**: Claude が提示するストーリーボードを確認し、修正を依頼するか、チャットで「承認 UX」と返信（実装はこの承認後に始まります）
 - `FACTORY_SUPPORT_EMAIL` の設定。Notion MCP が無い場合は、サポート/プライバシーページの公開と URL の連絡
 - 課金なしで出す場合の **waiver**（MVP では課金が原則必須）
 - macOS でのビルド・試験・撮影（Linux 環境では手前で停止）
 - `asc.mode` を `apply` にする判断と API キーの用意
-- TestFlight ビルドでの **課金テストの記録**: `app-factory evidence purchase-test`
-- **審査提出・公開の承認**: `app-factory approve submit` / `app-factory approve publish`
+- （任意）TestFlight ビルドでの **課金テスト**: `release.require_manual_purchase_test: true` の場合だけ、チャットで「承認 課金テスト」
+- **審査提出の承認**: チャットで「承認 提出」（既定では、この承認で Apple 承認後の公開まで進みます）
 
 ### CLI リファレンス（抜粋）
 ```bash
@@ -227,7 +256,9 @@ app-factory screenshots render
 app-factory asc plan [--fixture f.json] | asc apply [--simulate]
 app-factory testflight verify [--simulate]
 app-factory release readiness | release submit [--dry-run] | release publish [--dry-run]
-app-factory approve ux|submit|publish           # 人間専用・対話端末のみ
+app-factory approval request ux|submit|publish|purchase_test   # 承認依頼（人間がチャットで返信）
+app-factory approval status
+app-factory approve ux|submit|publish           # approval.mode=terminal のときだけ使う（人間専用・対話端末）
 app-factory doctor
 ```
 macOS 用スクリプト: `scripts/xcode/build.sh`, `test.sh`, `capture_screenshots.sh`, `testflight_upload.sh`
@@ -281,7 +312,7 @@ macOS 用スクリプト: `scripts/xcode/build.sh`, `test.sh`, `capture_screensh
 1. デザイナー（product-designer）が `factory/artifacts/ux/ux.json` に代表ユースケースを定義します。必須は、初回体験（空の状態から最初の成功まで）、中核タスク、課金（課金画面・価格・買い切りの説明・購入の復元・購入後/キャンセル後の動き）です。全 must 機能をカバーし、各ステップに画面・操作・期待結果・日英のキーコピー・ワイヤーフレームを書きます。
 2. `app-factory ux render` が、デザインのパレットでユースケースごとのストーリーボード（`storyboards/UCn.png`：画面を左から右に並べ、タップ箇所を強調）を生成します。
 3. Claude が会話でストーリーボードと確認してほしい点（`review_focus`）を提示します。修正の依頼があれば作り直します。
-4. 納得したら、**自分のターミナルで** `app-factory approve ux`（`UX <App> <version> (ux)` と入力）を実行します。承認は ux.json とストーリーボードの内容に結び付いており、後から変更すると無効になって再承認が必要です。Claude は承認できません（Hook と TTY 必須で二重に阻止）。
+4. 納得したら、チャットで「承認 UX」と返信します（Claude が `app-factory approval request ux` で依頼を出した後）。承認は ux.json とストーリーボードの内容に結び付いており、後から変更すると無効になって再承認が必要です。Claude は承認できません（Hook と TTY 必須で二重に阻止）。
 5. 承認後に実装が始まります。開発者は承認済みの流れに沿って実装し、試験ゲートは各ユースケース（`UC1`…）が UI テストでカバーされていることを確認します。
 
 承認の状態は `app-factory ux status` で確認できます。待っている間も、依存しない工程（サポートページ、ASO）は先に進められます。
@@ -345,19 +376,15 @@ API でも fastlane でも設定できないため人間が行うもの: App の
 
 ## 人間の承認による審査提出・公開
 
-1. Claude: `app-factory release readiness`（`ready: true` を確認）→ `app-factory release submit --dry-run`
-2. **人間が自分のターミナルで**:
-   ```bash
-   cd MyNewApp && app-factory approve submit
-   # → 「SUBMIT MyApp 1.0.0 (3)」を正確に入力
-   ```
+1. Claude: `app-factory release readiness`（`ready: true` を確認）→ `app-factory release submit --dry-run` → `app-factory approval request submit` で、提出内容の要約を会話に表示
+2. **あなたがチャットで「承認 提出」と返信**
 3. Claude: `app-factory release submit` → ゲート `submit`（既定では fastlane のレーン `submit_review` を実行。初回の IAP は API で同時に提出）
-4. Apple の審査通過後（`PENDING_DEVELOPER_RELEASE`）、人間が `app-factory approve publish`、続けて Claude が `app-factory release publish`（レーン `release_version`）
+4. Apple の審査通過後（`PENDING_DEVELOPER_RELEASE`）、Claude が `app-factory release publish`（レーン `release_version`）。既定では手順 2 の承認で公開まで進みます。公開にも個別の承認が必要な場合は、`approval.single_release_approval: false` にします（チャットで「承認 公開」）。
 
 強制の仕組み（多層）:
-- **スクリプト**: `approve` は TTY 必須で、Claude Code 内（`CLAUDECODE`）からは拒否します。確認フレーズの入力が必要です。承認は readiness ダイジェスト（ビルド・メタデータ・スクショ・IAP・ASC 状態）に束縛され、リポジトリ外の鍵（`~/.config/ios-app-factory/approver.key`、0600）で HMAC 署名され、期限（既定 72 時間）が切れると無効です。`release submit|publish` は毎回 readiness を再計算して検証します。
+- **承認の記録**: 承認は、人間がチャットに入力したメッセージ（`UserPromptSubmit` Hook）からだけ記録されます。`approval.mode: terminal` の場合は TTY 必須の `approve` コマンドから記録されます。承認は readiness ダイジェスト（ビルド・メタデータ・スクショ・IAP・ASC 状態）に結び付けられ、リポジトリ外の鍵（`~/.config/ios-app-factory/approver.key`、0600）で HMAC 署名され、期限（既定 72 時間）が切れると無効です。`release submit|publish` は毎回 readiness を再計算して検証します。
 - **fastlane レーン**: `submit_review` / `release_version` は、レーンの中でも `app-factory release verify-approval` を呼んで承認を再確認します。承認がなければ何も送らずに失敗します（レーンを直接起動しても同じです）。
-- **Hooks**: Claude による `approve` / `evidence` の実行、承認なしの `release submit|publish`、`reviewSubmissions` 等への直接 API 呼び出し、fastlane のリリース系レーン・`deliver` の直接実行、`submit_for_review: true`/`automatic_release: true`、承認ファイル・台帳・状態・ゲート結果の編集、承認鍵の参照をすべてブロックします。
+- **Hooks**: Claude による承認ファイル・承認依頼ファイルの編集、`approve` / `evidence` の実行、承認なしの `release submit|publish`、`reviewSubmissions` 等への直接 API 呼び出し、fastlane のリリース系レーン・`deliver` の直接実行、`submit_for_review: true`/`automatic_release: true`、承認ファイル・台帳・状態・ゲート結果の編集、承認鍵の参照をすべてブロックします。
 - ASC の同期 Plan には提出・公開系エンドポイントを入れられません（検証で拒否）。バージョンは常に手動リリースです。
 
 ## 設定リファレンス
@@ -378,7 +405,10 @@ API でも fastlane でも設定できないため人間が行うもの: App の
 | `screenshots.devices` | `["iphone_6_9"]` | `iphone_6_9`(1320×2868, APP_IPHONE_67), `iphone_6_5`, `ipad_13` |
 | `screenshots.fonts` | {} | 例 `{"ja": "/System/Library/Fonts/ヒラギノ角ゴシック W6.ttc"}` |
 | `release.backend` | `fastlane` | リリース処理の手段。`api` を明示した場合だけ ASC API クライアントで行う（IAP・価格は常に API） |
-| `release.require_manual_purchase_test` | true | 人による課金テスト記録を必須にする |
+| `quality.profile` | `mvp` | `mvp`: 仕上がりの細かさに関するチェックは警告にとどめ、デリバリーを優先する。`strict`: すべてのチェックで工程を止める |
+| `approval.mode` | `chat` | `chat`: チャットでの返信で承認する。`terminal`: ターミナルの `app-factory approve` で承認する |
+| `approval.single_release_approval` | true | 審査提出の承認で、Apple 承認後の公開まで行う |
+| `release.require_manual_purchase_test` | false | 人による課金テスト（チャットで「承認 課金テスト」）を必須にする |
 | `release.approval_ttl_hours` | 72 | 承認の有効期限 |
 | `testing.max_partial_reruns` | 2 | 全件実行 1 回あたりの、失敗ケースのみの再実行の上限 |
 | `locks.stale_after_minutes` | 30 | ロック失効（再開可能になるまで）の時間 |
@@ -394,7 +424,7 @@ API でも fastlane でも設定できないため人間が行うもの: App の
 ```bash
 cd plugins/ios-app-factory
 python3 -m pip install -r requirements-dev.txt
-python3 -m pytest -q                        # 150 tests
+python3 -m pytest -q                        # 170 tests
 claude plugin validate --strict .           # マニフェスト・Skills・Agents・Hooks の検証
 ```
 
@@ -421,8 +451,9 @@ claude plugin validate --strict .           # マニフェスト・Skills・Agen
 | `HTTP 409`（ASC） | 既に存在するか、編集できない状態のバージョンです。`asc plan` で差分を確認。台帳により二重作成はされません |
 | `uncertain` が台帳に残る | 次回の `asc apply` が照合（GET）してから続行します。手動での台帳編集は不要です（Hook で禁止） |
 | `build N not found yet` | TestFlight で処理中です。数分後に `app-factory testflight verify` を再実行 |
-| `HUMAN APPROVAL REQUIRED` | 人間が自分のターミナルで `app-factory approve submit`。承認後に何かが変わると無効になるので、`release readiness` からやり直してください |
-| `approval requires an interactive terminal` | Claude Code の `!` やスクリプトからは承認できません。通常のターミナルで実行してください |
+| `HUMAN APPROVAL REQUIRED` | Claude に承認依頼を出してもらい（`app-factory approval request submit`）、チャットで「承認 提出」と返信。承認後に何かが変わると無効になるので、依頼からやり直してください |
+| 「承認」と返信したのに記録されない | 返信に対象（UX / 提出 など）を含めてください（例:「承認 提出」）。「OK」だけの返信や長文は承認として扱いません。依頼後に内容が変わっていた場合も記録されないので、もう一度依頼を出してもらってください。`app-factory approval status` で依頼と承認の状態を確認できます |
+| 警告が多い | `mvp` プロファイルでは、仕上がりの細かさに関するチェックは警告になるだけで、工程は止まりません。気になるものだけ対応してください |
 | `approver key ... must not be group/world accessible` | `chmod 600 ~/.config/ios-app-factory/approver.key` |
 | Python の import エラー | `app-factory setup`（venv を作り依存をインストール） |
 | `set FACTORY_SUPPORT_EMAIL` | サポートページに載せるメールアドレスを環境変数に設定してから、`support-page render` を再実行 |
@@ -439,7 +470,7 @@ claude plugin validate --strict .           # マニフェスト・Skills・Agen
 
 ## 検証状況と制約
 
-- この環境（Linux）で実行・検証したもの: Python エンジン、全ゲート、ASC の Plan・検証、シミュレーターへの適用・クラッシュ復旧・冪等性、承認と Hooks、スクリーンショット合成（Noto CJK）、アイコン描画、サポートページの生成と記録、全 150 テスト、`claude plugin validate --strict`。
+- この環境（Linux）で実行・検証したもの: Python エンジン、全ゲート、ASC の Plan・検証、シミュレーターへの適用・クラッシュ復旧・冪等性、承認と Hooks、スクリーンショット合成（Noto CJK）、アイコン描画、サポートページの生成と記録、全 170 テスト、`claude plugin validate --strict`。
 - Notion への実際の投稿は、MCP ツールを使う Claude の手順（Skill）として実装しています。Notion MCP を接続した環境での実投稿はまだ試していません（テストでは公開 URL の確認を代替しています）。
 - fastlane バックエンド: 雛形の Fastfile は実際の fastlane 2.241.2 で読み込めることと、5 つのレーンが定義されていることをテストで確認しています。`deliver` の画面サイズ表・メタデータのファイル名・Spaceship のメソッドも 2.241.2 のソースで確認しました。レーンの動作そのものは、App Store Connect シミュレーター上で動く代替の fastlane を使ってテストしており、本番の App Store Connect に対してはまだ実行していません。
 - **macOS / Xcode が必要なため、ここでは実行できていないもの**: SwiftUI 雛形のコンパイル、XCTest/XCUITest の実行、シミュレーターでの撮影、Fastlane での TestFlight アップロード、実際の App Store Connect への書き込み。雛形の Swift コードと `scripts/xcode/*.sh` は、初回は Mac で `build.sh` → `test.sh` を流して確認してください（失敗はそれぞれのゲートで検出されます）。

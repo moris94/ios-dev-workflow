@@ -216,6 +216,31 @@
           "maximum": 10
         }
       }
+    },
+    "quality": {
+      "type": "object",
+      "properties": {
+        "profile": {
+          "enum": [
+            "mvp",
+            "strict"
+          ]
+        }
+      }
+    },
+    "approval": {
+      "type": "object",
+      "properties": {
+        "mode": {
+          "enum": [
+            "chat",
+            "terminal"
+          ]
+        },
+        "single_release_approval": {
+          "type": "boolean"
+        }
+      }
     }
   },
   "additionalProperties": true
